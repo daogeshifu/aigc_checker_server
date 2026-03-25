@@ -1,520 +1,435 @@
-# AIGC Checker Engine
+# AIGC Checker Server
 
-AI 内容检测与降 AI 改写服务，基于 FastAPI + 本地 LLM（Ollama）构建，请求层保留 `ollama / azure / openrouter` 三种来源选项，但当前实际执行策略固定为：
+面向生产场景的 AI 内容检测与降 AI 改写服务。
 
-- `scan`：始终走 Ollama 本地检测链路
-- `reduce`：前后检测仍走 Ollama；rewrite 采用组合流水线：
-  - Step1：Azure GPT-4o 深度语义重写，Azure 失败后回退 OpenRouter `qwen/qwen-plus`
-  - Step2：Ollama 本地 Qwen 做表达扰动
-  - Step3：规则注入，补回数字/细节锚点并削弱列表感
+[![Demo](https://img.shields.io/badge/Demo-aigcchecker.com-blue)](https://www.aigcchecker.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688)](https://fastapi.tiangolo.com/)
+[![Ollama](https://img.shields.io/badge/Ollama-Local%20LLM-black)](https://ollama.com/)
 
----
+在线演示站点：<https://www.aigcchecker.com/>
 
-## 目录
+## 项目简介
 
-- [架构概览](#架构概览)
-- [业务处理流程](#业务处理流程)
-  - [AI 检测流程 `/api/scan`](#ai-检测流程-apiscan)
-  - [降 AI 改写流程 `/api/reduce`](#降-ai-改写流程-apiReduce)
-- [会员与非会员区别](#会员与非会员区别)
-  - [请求权限对比](#请求权限对比)
-  - [返回字段对比](#返回字段对比)
-- [API 接口文档](#api-接口文档)
-- [评分体系说明](#评分体系说明)
-- [环境配置](#环境配置)
-- [启动方式](#启动方式)
+`AIGC Checker Server` 是一个基于 `FastAPI` 构建的 AI 内容检测服务，核心目标不是依赖超长 Prompt 让模型“猜”结果，而是采用更稳定的工程化方案：
 
----
+- 真实特征计算
+- 文档分块检测
+- 本地 Ollama 模型判别
+- 规则修正
+- 文档级聚合
+- 可选远程复核
+- 改写前后复检
 
-## 架构概览
+项目适合：
 
-```
-客户端请求
-    │
-    ▼
-[api/detect.py]  Token 校验 → 权限上下文
-    │
-    ▼
-[services/checker.py]  主编排层
-    ├── preprocess.py   文本清洗 / 文体识别 / 分块
-    ├── features.py     统计特征提取
-    ├── judges.py       Qwen LLM 风格判断（Ollama）
-    ├── aggregate.py    多路分数融合 → 文档级结论
-    ├── scan 主检测     固定 Ollama
-    └── reduce 改写     Azure/OpenRouter 深改 → Ollama 扰动 → 规则注入
-```
+- AI 内容检测产品后端
+- SaaS 文本审核服务
+- 对接 Laravel / PHP / Node / Java 等上层业务系统
+- 本地化或私有化部署
 
----
+## 核心特性
 
-## 业务处理流程
+- 本地优先：`/api/scan` 主链路固定走 Ollama 本地检测
+- 真实特征：字符数、句长波动、词汇多样性、重复 n-gram、连接词密度等由 Python 实际计算
+- 分块检测：长文本不是整篇一次判，而是 chunk 级别分析后再聚合
+- 语言增强：区分 `zh` / `en` / `mixed`，英文采用独立的连接词、细节信号和词级 n-gram 重复率
+- 会员能力分层：支持 `Free / Pro` token
+- 可选二审：Pro 套餐可启用远程复核
+- 兼容前端：返回结构兼容旧前端常见字段，同时保留专业字段
+- 降 AI 改写：支持 `/api/reduce`，改写后自动重新检测
 
-### AI 检测流程 `/api/scan`
+## 当前执行策略
 
-> 请求体仍接受 `api_source=ollama / azure / openrouter`，但当前 scan 实际执行引擎固定为 Ollama。
+### `/api/scan`
 
-```
-原始文本
-  │
-  ▼ 0. 固定检测来源
-     · 请求来源仅作兼容参数保留
-     · 实际分块判别与聚合始终使用 Ollama 本地模型
+当前 `scan` 实际执行策略固定为：
 
-  ▼ 1. 文本预处理（preprocess.clean_text）
-     · 统一换行符、压缩多余空白、合并连续空行
+- 本地检测固定走 `Ollama`
+- 本地模型默认使用 `qwen3.5:9b`
+- 请求中的 `api_source` 保留为兼容参数
+- Pro 用户在低置信度或边界结果时可触发远程复核
 
-  ▼ 2. 文体识别（preprocess.detect_genre）
-     · 输出：list_or_table / academic / business_doc /
-            seo_blog / marketing / translation_like / general
-     · 影响后续所有评分的保守程度
+### `/api/reduce`
 
-  ▼ 3. 文档级特征提取（features.extract_document_features）
-     · 字符数、句数、句长均值/标准差、burstiness
-     · 词汇多样性、4-gram 重复率、连接词密度
-     · 段落长度方差、具体细节信号数、可疑高频词
+当前 `reduce` 执行链路为：
 
-  ▼ 4. 文本分块（preprocess.chunk_text）
-     · 目标块大小 ~220 字符，最小 120 字符
-     · 过短的尾块自动合并到上一块
+1. 先对原文执行完整检测
+2. 执行语义改写
+3. 执行本地表达扰动
+4. 对改写结果再次检测
+5. 返回改写前后 AI 概率和质量分
 
-  ▼ 5. 逐块评分（对每个 chunk 并行执行以下三步）
-     │
-     ├── 5a. 分块特征提取（features.extract_chunk_features）
-     │
-     ├── 5b. Qwen LLM 风格判断（judges.judge_chunk_with_qwen）
-     │       · 调用 Ollama 本地模型，返回：
-     │         ai_score / confidence / signals / reasons / label
-     │       · LLM 调用失败时自动降级为启发式规则（heuristic_fallback）
-     │
-     └── 5c. 分块综合评分（aggregate.score_chunk）
-             · 权重融合：Qwen LLM 55% + 统计特征 30% + 风格信号 15%
-             · 按文体执行降分惩罚（academic/business_doc: -8, list_or_table: -15）
-             · 具体细节越多，分数越低（每个细节 -2.5，上限 -14）
-             · 短文本（< 120 字符）向 50 收缩并降低置信度
+## 系统架构
 
-  ▼ 6. 文档级聚合（aggregate.aggregate_document）
-     · 按分块字符数加权平均得到文档 AI 概率
-     · 识别高风险分块（ai_score ≥ 65）
-     · 统计各 chunk reasons 出现频次，取 Top 5 作为摘要原因
-
-  ▼ 7. 【仅 Pro，可选】远端二审（checker._run_remote_review）
-     · 满足以下任一条件时触发：
-       - 本地置信度为 low
-       - AI 概率处于边界区间 [40, 65]
-       - 正式文体（academic / business_doc / list_or_table）且高风险块 ≤ 1
-     · 该步骤是附加复核，不改变 scan 主链路固定走 Ollama 的事实
-     · 如启用，则调用 Azure 或 OpenRouter 做二次复核
-     · 融合权重：本地 72% + 二审 28%（置信度 low 时变为 60% + 40%）
-
-  ▼ 8. 统一补充套餐信息与 review 元数据
-     · Free / Pro 均返回完整检测结果
-     · 区别仅在是否允许远端二审，以及字数上限
-
-  ▼ 最终 JSON 响应
+```text
+Client / Web / Laravel
+        │
+        ▼
+   FastAPI Router
+        │
+        ▼
+ services/checker.py
+        ├── preprocess.py   文本清洗 / 语言识别 / 文体识别 / 分块
+        ├── features.py     真实特征工程
+        ├── judges.py       本地 Qwen 判别 / 启发式回退
+        ├── aggregate.py    chunk 评分融合 / 文档聚合
+        ├── ollama_client.py
+        ├── prompts.py
+        └── calibration.py
 ```
 
----
+## 目录结构
 
-### 降 AI 改写流程 `/api/reduce`
+```text
+api/
+  detect.py
 
-> 仅 Pro 套餐可用
-> 请求体仍接受 `api_source=ollama / azure / openrouter`，但当前 rewrite 执行链路固定为组合式 pipeline。
+services/
+  aggregate.py
+  calibration.py
+  checker.py
+  features.py
+  judges.py
+  ollama_client.py
+  preprocess.py
+  prompts.py
+  schemas.py
 
-```
-原始文本
-  │
-  ▼ 1. 执行完整检测流程（run_check）
-     · 获取 AI 概率 + 高风险分块列表
-     · 此阶段固定走 Ollama
-
-  ▼ 2. Step1：深度语义重写（checker._semantic_rewrite_step）
-     · 第一优先级：Azure GPT-4o（传 deployment name）
-     · 第二优先级：OpenRouter `qwen/qwen-plus`（传 model ID）
-     · 模型只返回最小草稿：`reduced + changes`
-     · 两者都禁止输出思考过程
-     · Azure 失败后才回退 OpenRouter
-     · 两者都失败时直接回退原文，返回 `rewrite=false`，`quality_score` 保持 55
-
-  ▼ 3. Step2：表达扰动（checker._perturb_expression_step）
-     · 固定走 Ollama 本地 Qwen
-     · 对 Step1 的结果继续打散句长、段首、连接词和列表感
-     · 只输出纯文本，不要求 JSON
-
-  ▼ 4. Step3：规则注入（checker._rule_injection_step）
-     · 确保数字、时间、专有名词等细节锚点没有在改写中丢失
-     · 将过于整齐的短句列表合并成更自然的段落
-     · 该步骤为确定性规则，便于后续继续追加更多方法
-
-  ▼ 5. 对改写文本再次执行检测（run_check）
-     · 获取改写后的 AI 概率
-     · 此阶段仍固定走 Ollama
-
-  ▼ 6. 计算改写质量分（checker._quality_score）
-     · 内容保留度（60%）= 词汇重叠（70%）+ 长度比（30%）
-     · 降 AI 效果（40%）= (before - after) / 60，上限 100
-     · 若改写后 AI 概率不降反升，则自动回滚为原文，避免返回更差结果
-
-  ▼ 最终 JSON 响应
+main.py
+start.sh
+requirements.txt
 ```
 
----
+## `/api/scan` 检测流程
 
-## 会员与非会员区别
+### 1. 请求入口
 
-### 请求权限对比
+路由：`POST /api/scan`
 
-| 能力 | Free 套餐 | Pro 套餐 |
-|------|-----------|----------|
-| AI 检测 `/api/scan` | ✅ | ✅ |
-| 降 AI 改写 `/api/reduce` | ❌ 返回 403 | ✅ |
-| 最大文本长度 | 3000 字符（`FREE_MAX_CHARS`） | 12000 字符（`PRO_MAX_CHARS`） |
-| 远端 Pro 二审 | ❌ | ✅（按需触发） |
+入口文件：[api/detect.py](./api/detect.py)
 
-> 字符上限可通过 `.env` 中的 `FREE_MAX_CHARS` / `PRO_MAX_CHARS` 调整。
+处理内容：
 
----
+- Bearer Token 鉴权
+- 套餐识别：`free / pro`
+- 文本长度校验
+- 进入 `services/checker.py::run_check`
 
-### 返回字段对比
+### 2. 主检测链路
 
-#### `/api/scan` 返回结构
+入口方法：[services/checker.py](./services/checker.py) 中的 `run_check`
 
-Free 与 Pro 现在都返回完整检测结果结构；差别不在字段裁剪，而在：
-- Free：`review.enabled=false`，不会触发远端二审
-- Pro：`review.enabled=true`，满足条件时可能触发远端二审
+执行步骤：
 
-**Free 套餐**
+1. `clean_text`
+2. `detect_language`
+3. `detect_genre`
+4. `extract_document_features`
+5. `chunk_text`
+6. 遍历 chunk：
+   - `extract_chunk_features`
+   - `judge_chunk_with_qwen`
+   - `score_chunk`
+7. `aggregate_document`
+8. Pro 用户按条件触发远程复核
+9. 输出最终结果
 
-```json
-{
-  "label": "Mixed",
-  "ai_probability": "58.32",
-  "confidence": "medium",
-  "plan": "free",
-  "document_features": {
-    "char_count": 1240,
-    "sentence_count": 18,
-    "avg_sentence_length": 28.5
-  },
-  "chunks": [
-    {
-      "chunk_id": 0,
-      "text": "...",
-      "ai_score": 62.4,
-      "label": "Mixed",
-      "confidence": 0.631
-    }
-  ],
-  "analysis": {
-    "genre": "general",
-    "high_risk_chunks": [0, 2],
-    "summary_reasons": [
-      "句长波动较小，整体节奏偏均匀。",
-      "词汇变化度偏低，表达较集中。"
-    ]
-  },
-  "summary": {
-    "confidence_label": "Mixed",
-    "percentages": { "ai": 38, "mixed": 42, "human": 20 }
-  },
-  "metrics": {
-    "perplexity": null,
-    "burstiness": 0.312,
-    "binoculars": null
-  },
-  "sentences": [
-    { "text": "...", "ai_probability": 62, "level": 6 }
-  ],
-  "vocab": { "count": 3, "words": ["therefore", "furthermore", "utilize"] },
-  "engine": {
-    "checker": "hybrid-local",
-    "requested_api_source": "azure",
-    "requested_model": "gpt-4o",
-    "scan_api_source": "ollama",
-    "qwen_model": "qwen3.5:9b"
-  },
-  "review": {
-    "enabled": false,
-    "used": false,
-    "provider": null,
-    "model": null,
-    "reason": "plan_disabled"
-  }
-}
+### 3. 本地模型调用策略
+
+本地判别模型：`Ollama + qwen3.5:9b`
+
+并不是所有 chunk 都一定调用本地模型。
+
+以下场景可能直接走启发式而跳过本地 Qwen：
+
+- 极短 chunk
+- 单句 chunk
+- 强结构化列表块
+- 细节很多的正式文本块
+
+因此实际本地模型调用次数通常小于 chunk 数。
+
+## 特征工程
+
+特征实现位于：[services/features.py](./services/features.py)
+
+当前真实计算的指标包括：
+
+- `char_count`
+- `sentence_count`
+- `avg_sentence_length`
+- `sentence_length_std`
+- `burstiness`
+- `lexical_diversity`
+- `repeated_ngram_ratio`
+- `punctuation_density`
+- `connector_density`
+- `paragraph_length_variance`
+- `detail_signal_count`
+- `digit_density`
+- `list_line_ratio`
+
+### 语言感知特征
+
+当前已支持语言感知：
+
+- `detect_language()`：区分 `zh` / `en` / `mixed`
+- 英文连接词单独统计
+- 英文 `detail_signal_count` 使用独立规则
+- 英文 `repeated_ngram_ratio` 使用词级 3-gram
+- `mixed` 文本同时参考中英文信号
+
+## 评分逻辑
+
+chunk 级最终分数由三部分组成：
+
+```text
+final_chunk_score =
+  0.55 * qwen_score +
+  0.30 * feature_score +
+  0.15 * style_score
 ```
 
----
+之后再叠加：
 
-**Pro 套餐**
+- 文体修正
+- 细节信号修正
+- 列表结构修正
+- 短文本收缩
+- 置信度缩放
 
-```json
-{
-  "label": "Mixed",
-  "ai_probability": "55.14",
-  "confidence": "high",
-  "plan": "pro",
-  "document_features": {
-    "char_count": 1240,
-    "sentence_count": 18,
-    "avg_sentence_length": 28.5,
-    "sentence_length_std": 8.3,
-    "burstiness": 0.291,
-    "lexical_diversity": 0.573,
-    "repeated_ngram_ratio": 0.031,
-    "punctuation_density": 0.042,
-    "connector_density": 0.018,
-    "paragraph_length_variance": 1820.4,
-    "detail_signal_count": 4,
-    "digit_density": 0.012,
-    "list_line_ratio": 0.0,
-    "suspicious_terms": ["leverage", "ensure", "implement"]
-  },
-  "chunks": [
-    {
-      "chunk_id": 0,
-      "start": 0,
-      "end": 215,
-      "text": "...",
-      "ai_score": 62.4,
-      "label": "Mixed",
-      "confidence": 0.631,
-      "reasons": ["句长波动较小，整体节奏偏均匀。"],
-      "score_breakdown": {
-        "feature_score": 55.2,
-        "qwen_score": 65.0,
-        "style_score": 58.3
-      },
-      "features": { "...": "完整特征字典" },
-      "signals": {
-        "over_smooth": 0.72,
-        "template_pattern": 0.31,
-        "sentence_uniformity": 0.68,
-        "human_detail": 0.42
-      },
-      "judge_label": "mixed"
-    }
-  ],
-  "analysis": {
-    "genre": "general",
-    "high_risk_chunks": [0, 2],
-    "summary_reasons": [
-      "句长波动较小，整体节奏偏均匀。",
-      "词汇变化度偏低，表达较集中。"
-    ]
-  },
-  "engine": {
-    "checker": "hybrid-local",
-    "requested_api_source": "openrouter",
-    "requested_model": "qwen/qwen-plus",
-    "scan_api_source": "ollama",
-    "qwen_model": "qwen3.5:9b"
-  },
-  "review": {
-    "enabled": true,
-    "used": true,
-    "provider": "openrouter",
-    "model": "qwen/qwen-plus",
-    "reason": "borderline_score",
-    "result": {
-      "ai_score": 48.0,
-      "confidence": 0.81,
-      "label": "mixed",
-      "reasons": ["含有具体项目约束，降低 AI 倾向。"]
-    }
-  }
-}
-```
+文档级 `ai_probability` 为：
 
-> 注意：如果 Pro 本次没有触发二审，仍会返回 `review` 字段，但 `used=false`，并带有 `reason=not_needed` 或其他未触发原因。
+- 所有 chunk `ai_score` 按 chunk 长度加权平均
+- 再经过短文档和正式文体的保守修正
+- 最终格式化为字符串，例如 `"63.40"`
 
----
+## 会员体系
 
-#### `/api/reduce` 返回结构（仅 Pro）
+支持两类 token：
 
-```json
-{
-  "reduced": "改写后的完整文本...",
-  "rewrite": true,
-  "ai_probability": "58.32",
-  "ai_reduced_probability": "31.07",
-  "quality_score": 74.5,
-  "model": "deep",
-  "changes": [
-    {
-      "original": "In conclusion, it is evident that...",
-      "revised": "综合来看，这说明...",
-      "reason": "替换过于模板化的结论句式"
-    }
-  ]
-}
-```
+| 套餐 | `/api/scan` | `/api/reduce` | 文本上限 | 远程复核 |
+|---|---|---|---:|---|
+| Free | 支持 | 不支持 | `FREE_MAX_CHARS` | 不启用 |
+| Pro | 支持 | 支持 | `PRO_MAX_CHARS` | 可启用 |
 
-| 字段 | 说明 |
-|------|------|
-| `reduced` | 改写后的完整文本 |
-| `rewrite` | 是否成功完成改写；若改写失败并回退原文，则为 `false` |
-| `ai_probability` | 原文 AI 概率（改写前） |
-| `ai_reduced_probability` | 改写后 AI 概率 |
-| `quality_score` | 改写质量综合得分（0-100），兼顾内容保留度和降 AI 效果 |
-| `model` | 改写强度：`light` / `moderate` / `deep` |
-| `changes` | 各片段的改写记录，含原文、改写文和改写原因 |
+说明：
 
----
+- 当前 `Free` 与 `Pro` 在 `/api/scan` 返回字段上保持一致
+- 两者主要区别是权限、长度上限、是否允许远程复核
 
-## API 接口文档
+## API 说明
 
 ### 认证方式
 
-所有接口需在请求头携带 Bearer Token：
+所有接口都需要：
 
+```http
+Authorization: Bearer <your_token>
+Content-Type: application/json
 ```
-Authorization: Bearer <your_api_token>
-```
-
----
 
 ### `POST /api/scan`
 
-**请求体**
+请求示例：
 
 ```json
 {
-  "content": "待检测文本（最少 50 字符）",
+  "content": "Your text here",
   "model": "qwen3.5:9b",
   "api_source": "ollama"
 }
 ```
 
+请求字段：
+
 | 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `content` | string | ✅ | 待检测文本 |
-| `model` | string | ❌ | 请求侧模型参数。当前 `scan` 仅在 `api_source=ollama` 时才会用它覆盖本地检测模型；否则会被忽略 |
-| `api_source` | string | ❌ | `ollama` / `azure` / `openrouter`。当前仅作请求兼容参数保留，`scan` 实际仍固定走 Ollama |
+|---|---|---|---|
+| `content` | string | 是 | 待检测文本 |
+| `model` | string | 否 | 请求模型名 |
+| `api_source` | string | 否 | 兼容字段：`ollama / azure / openrouter` |
 
-**错误码**
+返回字段核心包括：
 
-| 状态码 | 含义 |
-|--------|------|
-| 400 | 文本太短（< 50 字符）或超出套餐字数上限 |
-| 401 | Token 无效 |
-| 500 | 检测引擎内部异常 |
-| 502 | LLM 返回格式无法解析 |
+| 字段 | 说明 |
+|---|---|
+| `label` | `AI Generated / Mixed / Human Written` |
+| `ai_probability` | 文档总 AI 率 |
+| `confidence` | `low / medium / high` |
+| `document_features` | 文档级特征 |
+| `chunks` | chunk 级结果 |
+| `analysis` | `genre / language / high_risk_chunks` |
+| `summary` | 摘要信息 |
+| `metrics` | `perplexity / burstiness / binoculars` |
+| `review` | 远程复核元信息 |
+| `plan` | 套餐标记 |
 
----
+示例请求：
+
+```bash
+curl -X POST "http://127.0.0.1:8027/api/scan" \
+  -H "Authorization: Bearer your_token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "This is a sample text for AI detection.",
+    "model": "qwen3.5:9b",
+    "api_source": "ollama"
+  }'
+```
 
 ### `POST /api/reduce`
 
-请求体结构与 `/api/scan` 相同。
+请求体与 `/api/scan` 相同，但仅 Pro 用户可用。
 
-**额外限制**：Free 套餐调用返回 403。
+典型返回：
 
-**实际执行规则**
-
-- 文本前检和后检固定走 Ollama
-- rewrite Step1 固定优先走 Azure `gpt-4o` deployment
-- 只有 Azure Step1 失败时，才回退到 OpenRouter `qwen/qwen-plus`
-- rewrite Step2 固定走 Ollama 本地 `qwen`
-- rewrite Step3 固定走服务端规则注入
-- Azure 这里的 `model` 参数是 deployment name；OpenRouter 这里的 `model` 参数是公开 model ID
-
----
-
-## 评分体系说明
-
-### 分块评分权重
-
-| 来源 | 权重 |
-|------|------|
-| Qwen LLM 风格判断 | 55% |
-| 统计特征评分 | 30% |
-| 风格信号评分 | 15% |
-
-### 文体惩罚/奖励
-
-| 文体 | 分数调整 |
-|------|----------|
-| `academic` / `business_doc` | -8 |
-| `list_or_table` | -15 |
-| `translation_like` | -6 |
-| `marketing` | +3 |
-
-### AI 概率标签映射
-
-| 分数范围 | 标签 |
-|----------|------|
-| ≥ 70 | AI Generated |
-| 40 ~ 69 | Mixed |
-| < 40 | Human Written |
-
-### 置信度级别
-
-| 数值范围 | 级别 |
-|----------|------|
-| ≥ 0.72 | high |
-| 0.45 ~ 0.71 | medium |
-| < 0.45 | low |
-
----
+- `reduced`
+- `ai_probability`
+- `ai_reduced_probability`
+- `quality_score`
+- `model`
+- `changes`
 
 ## 环境配置
 
-复制 `.env.example` 为 `.env` 并填写以下配置：
+复制：
+
+```bash
+cp .env.example .env
+```
+
+关键配置如下：
 
 ```env
-# API 鉴权
-API_TOKEN=your_legacy_token
-FREE_API_TOKENS=token1,token2
-PRO_API_TOKENS=pro_token1,pro_token2
+API_SOURCE=ollama
 
-# 字数限制
+API_TOKEN=legacy_pro_token
+FREE_API_TOKENS=free_token_1,free_token_2
+PRO_API_TOKENS=pro_token_1,pro_token_2
+
 FREE_MAX_CHARS=3000
 PRO_MAX_CHARS=12000
 
-# 请求默认来源（仅影响默认入参，不改变 scan/reduce 的固定执行策略）
-API_SOURCE=ollama
-
-# Ollama 配置
 OLLAMA_BASE_URL=http://218.4.33.190:26316
 OLLAMA_MODEL=qwen3.5:9b
 OLLAMA_TIMEOUT=120
-OLLAMA_DISABLE_THINKING=true
 OLLAMA_JSON_NUM_CTX=1536
 OLLAMA_JSON_NUM_PREDICT=96
-OLLAMA_REWRITE_MODEL=qwen3.5:9b
-OLLAMA_REWRITE_NUM_CTX=4096
-OLLAMA_REWRITE_NUM_PREDICT=1024
 
-# Azure OpenAI（reduce rewrite Step1 第一优先级）
-AZURE_API_KEY=
-AZURE_ENDPOINT=
-AZURE_DEPLOYMENT=gpt-4o
-AZURE_REWRITE_DEPLOYMENT=gpt-4o
-AZURE_API_VERSION=2025-01-01-preview
-
-# OpenRouter（reduce rewrite Step1 兜底 / 远端复核可选）
-OPENROUTER_API_KEY=
-OPENROUTER_MODEL=qwen/qwen-plus
-OPENROUTER_REWRITE_MODEL=qwen/qwen-plus
-OPENROUTER_EXCLUDE_REASONING=true
-OPENROUTER_SEND_MODE=self   # self 直连 / proxy 走内部代理
-
-# Pro 二审配置
 PRO_REVIEW_SOURCE=openrouter
 PRO_REVIEW_MODEL=qwen/qwen-plus
+OPENROUTER_API_KEY=replace_with_openrouter_api_key
 ```
 
----
+### Token 生成
 
-## 启动方式
+建议使用高熵随机 token：
 
 ```bash
-# 安装依赖
-pip install -r requirements.txt
-
-# 开发模式（交互）
-./start.sh
-
-# 后台运行
-IS_PROD=y ./start.sh
-
-# 内部测试页面
-open http://localhost:8027/
+openssl rand -hex 24
 ```
+
+示例：
+
+```env
+FREE_API_TOKENS=token_a,token_b
+PRO_API_TOKENS=token_c,token_d
+```
+
+## 快速启动
+
+### 1. 创建虚拟环境
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. 配置环境变量
+
+```bash
+cp .env.example .env
+```
+
+### 4. 启动服务
+
+开发模式：
+
+```bash
+./start.sh
+```
+
+后台启动：
+
+```bash
+IS_PROD=y ./start.sh
+```
+
+默认地址：
+
+- 服务首页：<http://127.0.0.1:8027>
+- Swagger 文档：<http://127.0.0.1:8027/docs>
+
+## 与上层业务系统对接
+
+该项目非常适合做独立检测后端，被以下系统调用：
+
+- Laravel
+- PHP
+- Node.js
+- Java / Spring
+- Python 其他服务
+
+推荐接入方式：
+
+1. 上层业务系统只调用 FastAPI 服务
+2. 不要直接调用 Ollama
+3. 根据用户套餐选择 `Free / Pro` token
+4. 普通版只调用 `/api/scan`
+5. 会员版可调用 `/api/reduce`
+
+## 适用场景
+
+- AIGC 内容检测平台
+- 文档原创度辅助判断
+- SEO 内容审核
+- 教育 / 论文初筛
+- 企业内部文稿风险筛查
+- AI 改写前后效果验证
+
+## 项目目标
+
+本项目优先关注：
+
+- 稳定性
+- 可解释性
+- 可维护性
+- 本地优先部署
+- 兼容现有前端系统
+
+它不是一个单纯依赖 Prompt 的“演示型检测器”，而是一个面向真实业务落地的服务端检测流水线。
+
+## 后续方向
+
+- 更强的英文 AI 模板特征
+- 更稳定的真实 perplexity / pseudo-perplexity
+- 更精细的句子级高亮
+- 更多语言支持
+- 基于标注数据的校准层增强
+
+## 贡献
+
+欢迎提交：
+
+- Issue
+- Bug report
+- Feature request
+- Pull Request
+
+如果你在生产环境中使用了这个项目，欢迎附上你的使用场景和优化建议。
