@@ -315,10 +315,16 @@ def list_tasks(client_id: str | None, limit: int = 30) -> list[dict[str, Any]]:
 
 
 def _execution_summary(events: list[dict[str, Any]]) -> dict[str, Any]:
-    """从脱敏事件中汇总实际调用的本地模型与第三方模型。"""
+    """从脱敏事件中汇总模型调用尝试、成功与失败状态。"""
     configured_local_models: list[str] = []
     local_models: list[str] = []
     heuristic_chunks = 0
+    local_attempts = 0
+    local_successes = 0
+    local_failures = 0
+    remote_review_attempts = 0
+    remote_review_successes = 0
+    remote_review_failures = 0
     remote: dict[str, dict[str, Any]] = {}
 
     def append_unique(items: list[str], value: Any) -> None:
@@ -332,13 +338,25 @@ def _execution_summary(events: list[dict[str, Any]]) -> dict[str, Any]:
             append_unique(configured_local_models, details.get("scan_model"))
         elif step == "judge.route.qwen":
             append_unique(local_models, details.get("model"))
+            local_attempts += 1
+        elif step == "judge.qwen.finish":
+            append_unique(local_models, details.get("model"))
+            local_successes += 1
+        elif step == "judge.qwen.fallback":
+            append_unique(local_models, details.get("model"))
+            local_failures += 1
         elif step == "judge.route.heuristic":
             heuristic_chunks += 1
 
-        if step == "provider.azure.call":
+        if step in {"provider.azure.call", "provider.azure.success", "provider.azure.failure"}:
             provider_key = "azure"
             model = details.get("deployment")
-        elif step in {"provider.openrouter.call", "provider.openrouter.proxy_call"}:
+        elif step in {
+            "provider.openrouter.call",
+            "provider.openrouter.proxy_call",
+            "provider.openrouter.success",
+            "provider.openrouter.failure",
+        }:
             provider_key = "openrouter"
             model = details.get("model")
         else:
@@ -351,24 +369,100 @@ def _execution_summary(events: list[dict[str, Any]]) -> dict[str, Any]:
                 "display_name": "Microsoft Azure GPT" if provider_key == "azure" else "OpenRouter",
                 "models": [],
                 "purposes": [],
-                "calls": 0,
+                "attempts": 0,
+                "successes": 0,
+                "failures": 0,
             },
         )
         append_unique(provider["models"], model)
         append_unique(provider["purposes"], details.get("purpose"))
-        provider["calls"] += 1
+
+        if step.endswith(".call") or step.endswith(".proxy_call"):
+            provider["attempts"] += 1
+            if details.get("purpose") == "remote_review":
+                remote_review_attempts += 1
+        elif step.endswith(".success"):
+            provider["successes"] += 1
+            if details.get("purpose") == "remote_review":
+                remote_review_successes += 1
+        elif step.endswith(".failure"):
+            provider["failures"] += 1
+            if details.get("purpose") == "remote_review":
+                remote_review_failures += 1
+
+    def call_status(attempts: int, successes: int, failures: int) -> str:
+        if attempts == 0:
+            return "not_called"
+        if successes > 0 and failures > 0:
+            return "partial"
+        if successes >= attempts and failures == 0:
+            return "success"
+        if failures >= attempts and successes == 0:
+            return "failed"
+        # 兼容新增终态日志之前产生的历史任务；不能把“发起调用”误报为成功。
+        return "unknown"
+
+    local_status = call_status(local_attempts, local_successes, local_failures)
+    for provider in remote.values():
+        provider["calls"] = provider["attempts"]  # 保留旧前端字段兼容性
+        provider["pending"] = max(
+            provider["attempts"] - provider["successes"] - provider["failures"], 0
+        )
+        provider["status"] = call_status(
+            provider["attempts"], provider["successes"], provider["failures"]
+        )
 
     return {
         "local": {
             "provider": "ollama",
             "display_name": "Ollama / Qwen",
-            "called": bool(local_models),
+            "called": local_attempts > 0,
             "models": local_models,
             "configured_models": configured_local_models,
-            "calls": sum(1 for event in events if event["step"] == "judge.route.qwen"),
+            "calls": local_attempts,
+            "attempts": local_attempts,
+            "successes": local_successes,
+            "failures": local_failures,
+            "pending": max(local_attempts - local_successes - local_failures, 0),
+            "status": local_status,
             "heuristic_chunks": heuristic_chunks,
         },
         "third_party": list(remote.values()),
+        "detection_modes": [
+            {
+                "key": "local_qwen",
+                "name": "本地 Qwen 判别",
+                "description": "分块交给 Ollama / Qwen 判断，并融合统计特征得分。",
+                "count": local_attempts,
+                "attempts": local_attempts,
+                "successes": local_successes,
+                "failures": local_failures,
+                "active": local_attempts > 0,
+            },
+            {
+                "key": "statistics",
+                "name": "统计直算",
+                "description": "短文本或结构化分块跳过模型，直接计算统计特征。",
+                "count": heuristic_chunks,
+                "active": heuristic_chunks > 0,
+            },
+            {
+                "key": "qwen_fallback",
+                "name": "Qwen 失败回退",
+                "description": "Qwen 调用失败后，自动回退到统计特征计算。",
+                "count": local_failures,
+                "active": local_failures > 0,
+            },
+            {
+                "key": "remote_review",
+                "name": "远端大模型复核",
+                "description": "边界或低置信度结果由 Azure GPT / OpenRouter 复核。",
+                "count": remote_review_attempts,
+                "successes": remote_review_successes,
+                "failures": remote_review_failures,
+                "active": remote_review_attempts > 0,
+            },
+        ],
     }
 
 

@@ -331,17 +331,36 @@ async def _call_azure_json(system_prompt: str, user_prompt: str, deployment_name
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
+    _log_task(task_id, "provider.azure.call", purpose=purpose, deployment=deployment_name)
     client = _get_azure_client()
     if not client:
+        _log_task(
+            task_id,
+            "provider.azure.failure",
+            purpose=purpose,
+            deployment=deployment_name,
+            error_type="RuntimeError",
+        )
         raise RuntimeError("Azure 未配置")
-    _log_task(task_id, "provider.azure.call", purpose=purpose, deployment=deployment_name)
-    response = await client.chat.completions.create(
-        model=deployment_name,
-        messages=messages,
-        response_format={"type": "json_object"},
-        temperature=0.2,
-    )
-    return _extract_json(response.choices[0].message.content)
+    try:
+        response = await client.chat.completions.create(
+            model=deployment_name,
+            messages=messages,
+            response_format={"type": "json_object"},
+            temperature=0.2,
+        )
+        result = _extract_json(response.choices[0].message.content)
+    except Exception as exc:
+        _log_task(
+            task_id,
+            "provider.azure.failure",
+            purpose=purpose,
+            deployment=deployment_name,
+            error_type=type(exc).__name__,
+        )
+        raise
+    _log_task(task_id, "provider.azure.success", purpose=purpose, deployment=deployment_name)
+    return result
 
 
 async def _call_openrouter_json(system_prompt: str, user_prompt: str, model_id: str, purpose: str, task_id: str | None = None) -> dict:
@@ -356,11 +375,19 @@ async def _call_openrouter_json(system_prompt: str, user_prompt: str, model_id: 
     send_mode = os.getenv("OPENROUTER_SEND_MODE", "self").lower()
     if send_mode == "proxy":
         _log_task(task_id, "provider.openrouter.proxy_call", purpose=purpose, model=model_id)
-        return _extract_json(await _send_by_proxy(messages, model_id))
-
-    client = _get_openrouter_client()
-    if not client:
-        raise RuntimeError("OpenRouter 未配置")
+        try:
+            result = _extract_json(await _send_by_proxy(messages, model_id))
+        except Exception as exc:
+            _log_task(
+                task_id,
+                "provider.openrouter.failure",
+                purpose=purpose,
+                model=model_id,
+                error_type=type(exc).__name__,
+            )
+            raise
+        _log_task(task_id, "provider.openrouter.success", purpose=purpose, model=model_id)
+        return result
 
     request_kwargs = {
         "model": model_id,
@@ -376,8 +403,30 @@ async def _call_openrouter_json(system_prompt: str, user_prompt: str, model_id: 
         request_kwargs["extra_body"] = {"reasoning": {"exclude": True}}
 
     _log_task(task_id, "provider.openrouter.call", purpose=purpose, model=model_id)
-    response = await client.chat.completions.create(**request_kwargs)
-    return _extract_json(response.choices[0].message.content)
+    client = _get_openrouter_client()
+    if not client:
+        _log_task(
+            task_id,
+            "provider.openrouter.failure",
+            purpose=purpose,
+            model=model_id,
+            error_type="RuntimeError",
+        )
+        raise RuntimeError("OpenRouter 未配置")
+    try:
+        response = await client.chat.completions.create(**request_kwargs)
+        result = _extract_json(response.choices[0].message.content)
+    except Exception as exc:
+        _log_task(
+            task_id,
+            "provider.openrouter.failure",
+            purpose=purpose,
+            model=model_id,
+            error_type=type(exc).__name__,
+        )
+        raise
+    _log_task(task_id, "provider.openrouter.success", purpose=purpose, model=model_id)
+    return result
 
 
 def _build_semantic_rewrite_prompt(content: str, detection_result: dict) -> str:
