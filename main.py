@@ -16,6 +16,7 @@ app = FastAPI(title="AIGC Checker Engine", version="1.1")
 app.include_router(detect_router, prefix="/api")
 
 _DEMO_PAGE = Path(__file__).with_name("web") / "demo.html"
+_TASKS_PAGE = Path(__file__).with_name("web") / "tasks.html"
 
 
 def _render_demo_page(initial_view: str = "demo") -> str:
@@ -54,3 +55,8 @@ async def get_demo_alias():
 @app.get("/test", response_class=HTMLResponse)
 async def get_test_page():
     return HTMLResponse(content=_render_demo_page("test"), headers={"Cache-Control": "no-store"})
+
+
+@app.get("/tasks", response_class=HTMLResponse)
+async def get_tasks_page():
+    return HTMLResponse(content=_TASKS_PAGE.read_text(encoding="utf-8"), headers={"Cache-Control": "no-store"})

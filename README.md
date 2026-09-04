@@ -299,10 +299,10 @@ curl -X POST "http://127.0.0.1:8027/api/scan" \
 
 ### 任务记录接口
 
-- `GET /api/tasks`：返回当前 Token 最近的任务摘要
+- `GET /api/tasks`：返回当前 Token 可见的任务摘要，最多读取当前保留上限
 - `GET /api/tasks/{task_id}`：返回单个任务的完整执行步骤
 
-任务记录按 Token 隔离，只保存步骤、模型、分块数量、统计分数、状态和耗时等运行元数据。`content`、`text`、`prompt`、改写前后文本等字段会被强制脱敏。
+`API_TOKEN` 作为管理 Token，可查看 Demo、测试页与第三方 API 的全部任务；`FREE_API_TOKENS` 和 `PRO_API_TOKENS` 仍按 Token 隔离，只能查看自己的记录。任务日志只保存步骤、模型、分块数量、统计分数、状态和耗时等运行元数据。`content`、`text`、`prompt`、改写前后文本等字段会被强制脱敏。
 
 ## 环境配置
 
@@ -392,6 +392,7 @@ IS_PROD=y ./start.sh
 
 - 快速体验：<http://127.0.0.1:8027/demo>
 - 接口测试：<http://127.0.0.1:8027/test>
+- 任务记录：<http://127.0.0.1:8027/tasks>
 - Swagger 文档：<http://127.0.0.1:8027/docs>
 
 未配置 `API_TOKEN` 时默认 Token 为 `aigcchecker`。生产环境请在 `.env` 中替换为高熵随机 Token。

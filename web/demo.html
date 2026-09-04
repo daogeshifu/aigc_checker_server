@@ -74,34 +74,28 @@
     .brand-copy strong { display: block; font-size: 15px; letter-spacing: .03em; }
     .brand-copy span { display: block; margin-top: 2px; color: #8090a5; font-size: 11px; letter-spacing: .08em; }
 
-    .history-btn {
-      position: relative;
+    .topnav {
       display: flex;
       align-items: center;
-      gap: 9px;
-      min-height: 42px;
-      padding: 0 15px;
-      border: 1px solid #d9e3ee;
-      border-radius: 13px;
-      color: #29415e;
-      background: #fff;
-      cursor: pointer;
-      transition: .2s ease;
+      gap: 5px;
     }
-    .history-btn:hover { border-color: #a8c2ed; transform: translateY(-1px); box-shadow: 0 8px 22px rgba(33, 57, 91, .09); }
-    .history-btn svg { width: 17px; height: 17px; }
-    .history-count {
-      min-width: 20px;
-      height: 20px;
-      padding: 0 6px;
-      display: grid;
-      place-items: center;
-      border-radius: 99px;
-      color: #fff;
-      background: var(--blue);
-      font-size: 11px;
-      font-weight: 700;
+    .nav-link {
+      min-height: 39px;
+      padding: 0 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 11px;
+      color: #607289;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 650;
+      transition: .18s ease;
     }
+    .nav-link:hover { color: var(--blue); background: #edf4ff; }
+    .nav-link svg { width: 15px; height: 15px; }
+    body[data-view="demo"] .nav-link[data-nav="demo"],
+    body[data-view="test"] .nav-link[data-nav="test"] { color: #fff; background: var(--ink); box-shadow: 0 7px 18px rgba(16, 35, 63, .15); }
 
     main { width: min(1080px, calc(100% - 40px)); margin: 0 auto; padding: 66px 0 70px; }
     .hero { max-width: 760px; margin: 0 auto 36px; text-align: center; }
@@ -405,7 +399,11 @@
     @media (max-width: 720px) {
       .topbar-inner, main { width: min(100% - 24px, 1080px); }
       main { padding-top: 42px; }
-      .history-btn > span:first-of-type { display: none; }
+      .topbar-inner { gap: 8px; }
+      .brand-copy { display: none; }
+      .topnav { flex: 1; justify-content: flex-end; gap: 1px; }
+      .nav-link { min-height: 36px; padding: 0 7px; font-size: 11px; }
+      .nav-link svg { display: none; }
       .workspace-head, .token-wrap, .workspace-body, .result-card { padding-left: 18px; padding-right: 18px; }
       .privacy-note { display: none; }
       .token-box { grid-template-columns: 1fr auto; }
@@ -429,10 +427,14 @@
         </div>
         <div class="brand-copy"><strong>AIGC CHECKER</strong><span>DETECTION ENGINE</span></div>
       </div>
-      <button class="history-btn" id="historyBtn" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
-        <span>任务记录</span><span class="history-count" id="historyCount">0</span>
-      </button>
+      <nav class="topnav" aria-label="主导航">
+        <a class="nav-link" data-nav="demo" href="/demo">快速体验</a>
+        <a class="nav-link" data-nav="test" href="/test">接口测试</a>
+        <a class="nav-link" data-nav="tasks" href="/tasks">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>任务记录
+        </a>
+        <a class="nav-link" data-nav="docs" href="/docs" target="_blank" rel="noopener">API 文档</a>
+      </nav>
     </div>
   </header>
 
@@ -442,11 +444,6 @@
       <h1>看清每一次 AI 检测<br>是如何得出结论的</h1>
       <p>粘贴文本，快速获得 AI 概率、置信度与执行路径。任务日志只记录模型路由和计算指标，不保存你的具体内容。</p>
     </section>
-
-    <nav class="view-tabs" aria-label="页面模式">
-      <button class="view-tab" data-view-target="demo" type="button">快速体验</button>
-      <button class="view-tab" data-view-target="test" type="button">接口测试</button>
-    </nav>
 
     <section class="workspace">
       <div class="workspace-head">
@@ -531,18 +528,6 @@
       <details class="raw-wrap"><summary>查看原始 JSON 返回</summary><pre id="jsonOutput"></pre></details>
     </section>
   </main>
-
-  <div class="backdrop" id="drawerBackdrop"></div>
-  <aside class="drawer" id="historyDrawer" aria-label="任务记录">
-    <div class="drawer-head">
-      <div><h2>任务记录</h2><p>点击任务查看完整执行路径</p></div>
-      <button class="icon-btn" id="closeDrawerBtn" type="button" aria-label="关闭">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 6 12 12M18 6 6 18"/></svg>
-      </button>
-    </div>
-    <div class="drawer-tools"><span>仅展示脱敏运行元数据</span><button class="refresh-btn" id="refreshBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M17.9 15A7 7 0 0 1 6 18l-2-6"/></svg>刷新</button></div>
-    <div class="task-list" id="taskList"><div class="empty">输入 Token 后即可查看任务记录。</div></div>
-  </aside>
 
   <div class="modal-shell" id="detailModal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -682,7 +667,6 @@
       try {
         const data = await apiFetch(`/api/${state.mode}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
         renderResult(data);
-        await loadTasks(false);
         showToast('任务执行完成');
       } catch (error) {
         showToast(error.message || '请求失败，请稍后重试', 'error');
@@ -716,40 +700,6 @@
       $('#jsonOutput').textContent = JSON.stringify(data, null, 2);
       $('#resultCard').classList.add('visible');
       setTimeout(() => $('#resultCard').scrollIntoView({behavior:'smooth', block:'nearest'}), 30);
-    }
-
-    function openDrawer() {
-      if (!token()) return showToast('请先输入 Token，再查看任务记录', 'error');
-      $('#historyDrawer').classList.add('open'); $('#drawerBackdrop').classList.add('open');
-      loadTasks(true);
-    }
-    function closeDrawer() { $('#historyDrawer').classList.remove('open'); $('#drawerBackdrop').classList.remove('open'); }
-
-    async function loadTasks(showLoading = false) {
-      if (!token()) return;
-      if (showLoading) $('#taskList').innerHTML = '<div class="empty">正在读取任务记录…</div>';
-      try {
-        const data = await apiFetch('/api/tasks?limit=40');
-        state.tasks = data.items || [];
-        $('#historyCount').textContent = state.tasks.length > 99 ? '99+' : state.tasks.length;
-        renderTasks();
-      } catch (error) {
-        if (showLoading) $('#taskList').innerHTML = `<div class="empty">${escapeHtml(error.message)}<br>请检查 Token 是否正确。</div>`;
-      }
-    }
-
-    function renderTasks() {
-      if (!state.tasks.length) { $('#taskList').innerHTML = '<div class="empty">还没有任务记录。<br>完成一次检测后会显示在这里。</div>'; return; }
-      $('#taskList').innerHTML = state.tasks.map(task => {
-        const result = task.result || {};
-        const score = result.ai_reduced_probability ?? result.ai_probability;
-        return `<button class="task-item" type="button" data-task-id="${escapeHtml(task.task_id)}">
-          <div class="task-top"><span class="task-type">${task.task_type === 'reduce' ? '降 AI 改写' : 'AI 内容检测'}</span><span class="source-pill ${escapeHtml(task.source)}">${task.source === 'demo' ? 'DEMO' : task.source === 'test' ? '测试页' : 'API'}</span></div>
-          <div class="task-id">${escapeHtml(task.task_id)}</div>
-          <div class="task-bottom"><span class="status-dot ${escapeHtml(task.status)}">${task.status === 'success' ? (score != null ? `AI ${escapeHtml(score)}%` : '已完成') : task.status === 'failed' ? '执行失败' : '执行中'}</span><span>${fmtTime(task.created_at)} · ${fmtDuration(task.duration_ms)}</span></div>
-        </button>`;
-      }).join('');
-      $$('.task-item').forEach(item => item.addEventListener('click', () => openTaskDetail(item.dataset.taskId)));
     }
 
     function routeSummary(events) {
@@ -807,8 +757,6 @@
       $('#apiSource').value = CONFIG.apiSource;
       $('#modelInput').value = CONFIG.models[CONFIG.apiSource] || CONFIG.models.ollama;
       updateTokenStatus(); updateCount(); switchView(CONFIG.initialView); switchMode('scan'); renderRouteHint();
-      if (token()) loadTasks(false);
-
       $$('.view-tab').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.viewTarget)));
       $$('.mode-card').forEach(card => card.addEventListener('click', () => switchMode(card.dataset.mode)));
       $$('.sample-btn').forEach(btn => btn.addEventListener('click', () => { $('#inputText').value = samples[btn.dataset.sample]; updateCount(); $('#inputText').focus(); }));
@@ -821,13 +769,9 @@
         try { await navigator.clipboard.writeText($('#reducedText').textContent); showToast('改写结果已复制'); }
         catch { showToast('复制失败，请手动选择文本', 'error'); }
       });
-      $('#historyBtn').addEventListener('click', openDrawer);
-      $('#closeDrawerBtn').addEventListener('click', closeDrawer);
-      $('#drawerBackdrop').addEventListener('click', closeDrawer);
-      $('#refreshBtn').addEventListener('click', () => loadTasks(true));
       $('#closeModalBtn').addEventListener('click', closeModal);
       $('#detailModal').addEventListener('click', event => { if (event.target === $('#detailModal')) closeModal(); });
-      document.addEventListener('keydown', event => { if (event.key === 'Escape') { closeModal(); closeDrawer(); } });
+      document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
     });
   </script>
 </body>

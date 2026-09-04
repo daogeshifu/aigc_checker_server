@@ -282,32 +282,51 @@ def _task_row(row: sqlite3.Row) -> dict[str, Any]:
     return item
 
 
-def list_tasks(client_id: str, limit: int = 30) -> list[dict[str, Any]]:
+def list_tasks(client_id: str | None, limit: int = 30) -> list[dict[str, Any]]:
     _initialize()
-    safe_limit = max(1, min(limit, 100))
+    safe_limit = max(1, min(limit, TASK_LOG_MAX_RECORDS))
     with _LOCK, _connect() as connection:
-        rows = connection.execute(
-            """
-            SELECT task_id, task_type, source, status, plan,
-                   requested_api_source, requested_model, char_count,
-                   result_summary, error_code, created_at, updated_at, duration_ms
-            FROM tasks
-            WHERE client_id = ?
-            ORDER BY created_at DESC
-            LIMIT ?
-            """,
-            (client_id, safe_limit),
-        ).fetchall()
+        if client_id is None:
+            rows = connection.execute(
+                """
+                SELECT task_id, task_type, source, status, plan,
+                       requested_api_source, requested_model, char_count,
+                       result_summary, error_code, created_at, updated_at, duration_ms
+                FROM tasks
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (safe_limit,),
+            ).fetchall()
+        else:
+            rows = connection.execute(
+                """
+                SELECT task_id, task_type, source, status, plan,
+                       requested_api_source, requested_model, char_count,
+                       result_summary, error_code, created_at, updated_at, duration_ms
+                FROM tasks
+                WHERE client_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (client_id, safe_limit),
+            ).fetchall()
     return [_task_row(row) for row in rows]
 
 
-def get_task(task_id: str, client_id: str) -> dict[str, Any] | None:
+def get_task(task_id: str, client_id: str | None) -> dict[str, Any] | None:
     _initialize()
     with _LOCK, _connect() as connection:
-        task = connection.execute(
-            "SELECT * FROM tasks WHERE task_id = ? AND client_id = ?",
-            (task_id, client_id),
-        ).fetchone()
+        if client_id is None:
+            task = connection.execute(
+                "SELECT * FROM tasks WHERE task_id = ?",
+                (task_id,),
+            ).fetchone()
+        else:
+            task = connection.execute(
+                "SELECT * FROM tasks WHERE task_id = ? AND client_id = ?",
+                (task_id, client_id),
+            ).fetchone()
         if not task:
             return None
         events = connection.execute(

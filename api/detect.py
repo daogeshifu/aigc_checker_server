@@ -42,6 +42,7 @@ def _token_context(token: str) -> dict:
             "can_remote_review": True,
             "max_chars": _PRO_MAX_CHARS,
             "client_id": _client_id("pro", token),
+            "can_view_all_tasks": False,
         }
     if token in _FREE_API_TOKENS:
         # Free 套餐：不支持改写和二审，字数有限制
@@ -51,6 +52,7 @@ def _token_context(token: str) -> dict:
             "can_remote_review": False,
             "max_chars": _FREE_MAX_CHARS,
             "client_id": _client_id("free", token),
+            "can_view_all_tasks": False,
         }
     if _API_TOKEN and token == _API_TOKEN:
         # 旧版单一 Token，向下兼容，权限等同 Pro
@@ -60,6 +62,7 @@ def _token_context(token: str) -> dict:
             "can_remote_review": True,
             "max_chars": _PRO_MAX_CHARS,
             "client_id": _client_id("legacy", token),
+            "can_view_all_tasks": True,
         }
     raise HTTPException(status_code=401, detail="Token 无效，拒绝访问")
 
@@ -257,17 +260,19 @@ async def reduce_document(request: ScanRequest, auth_context: dict = Security(_v
 
 @router.get("/tasks")
 async def task_history(
-    limit: int = Query(default=30, ge=1, le=100),
+    limit: int = Query(default=200, ge=1, le=200),
     _auth_context: dict = Security(_verify_token),
 ):
     """返回最近任务的脱敏摘要，不包含任何用户原文或改写内容。"""
-    return {"items": list_tasks(client_id=_auth_context["client_id"], limit=limit)}
+    client_id = None if _auth_context["can_view_all_tasks"] else _auth_context["client_id"]
+    return {"items": list_tasks(client_id=client_id, limit=limit)}
 
 
 @router.get("/tasks/{task_id}")
 async def task_detail(task_id: str, _auth_context: dict = Security(_verify_token)):
     """返回单个任务的完整执行轨迹；每一步仅暴露运行元数据。"""
-    task = get_task(task_id, client_id=_auth_context["client_id"])
+    client_id = None if _auth_context["can_view_all_tasks"] else _auth_context["client_id"]
+    task = get_task(task_id, client_id=client_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务记录不存在或已过期")
     return task
