@@ -314,6 +314,64 @@ def list_tasks(client_id: str | None, limit: int = 30) -> list[dict[str, Any]]:
     return [_task_row(row) for row in rows]
 
 
+def _execution_summary(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """从脱敏事件中汇总实际调用的本地模型与第三方模型。"""
+    configured_local_models: list[str] = []
+    local_models: list[str] = []
+    heuristic_chunks = 0
+    remote: dict[str, dict[str, Any]] = {}
+
+    def append_unique(items: list[str], value: Any) -> None:
+        if isinstance(value, str) and value and value not in items and value != "default":
+            items.append(value)
+
+    for event in events:
+        step = event["step"]
+        details = event.get("details", {})
+        if step == "scan.start":
+            append_unique(configured_local_models, details.get("scan_model"))
+        elif step == "judge.route.qwen":
+            append_unique(local_models, details.get("model"))
+        elif step == "judge.route.heuristic":
+            heuristic_chunks += 1
+
+        if step == "provider.azure.call":
+            provider_key = "azure"
+            model = details.get("deployment")
+        elif step in {"provider.openrouter.call", "provider.openrouter.proxy_call"}:
+            provider_key = "openrouter"
+            model = details.get("model")
+        else:
+            continue
+
+        provider = remote.setdefault(
+            provider_key,
+            {
+                "provider": provider_key,
+                "display_name": "Microsoft Azure GPT" if provider_key == "azure" else "OpenRouter",
+                "models": [],
+                "purposes": [],
+                "calls": 0,
+            },
+        )
+        append_unique(provider["models"], model)
+        append_unique(provider["purposes"], details.get("purpose"))
+        provider["calls"] += 1
+
+    return {
+        "local": {
+            "provider": "ollama",
+            "display_name": "Ollama / Qwen",
+            "called": bool(local_models),
+            "models": local_models,
+            "configured_models": configured_local_models,
+            "calls": sum(1 for event in events if event["step"] == "judge.route.qwen"),
+            "heuristic_chunks": heuristic_chunks,
+        },
+        "third_party": list(remote.values()),
+    }
+
+
 def get_task(task_id: str, client_id: str | None) -> dict[str, Any] | None:
     _initialize()
     with _LOCK, _connect() as connection:
@@ -347,4 +405,5 @@ def get_task(task_id: str, client_id: str | None) -> dict[str, Any] | None:
         }
         for event in events
     ]
+    result["execution_summary"] = _execution_summary(result["events"])
     return result
