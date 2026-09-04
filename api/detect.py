@@ -1,23 +1,31 @@
+import hashlib
 import logging
 import os
-from typing import Optional
+from typing import Literal, Optional
 
-from fastapi import APIRouter, HTTPException, Security
+from fastapi import APIRouter, HTTPException, Query, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from services.checker import API_SOURCE, new_task_id, run_check, run_reduce
+from services.task_log import fail_task, finish_task, get_task, list_tasks, record_task_event, start_task
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 _security = HTTPBearer()
-_API_TOKEN = os.getenv("API_TOKEN")
+_API_TOKEN = os.getenv("API_TOKEN") or "aigcchecker"
 _FREE_API_TOKENS = {token.strip() for token in os.getenv("FREE_API_TOKENS", "").split(",") if token.strip()}
 _PRO_API_TOKENS = {token.strip() for token in os.getenv("PRO_API_TOKENS", "").split(",") if token.strip()}
 _FREE_MAX_CHARS = int(os.getenv("FREE_MAX_CHARS", "3000"))
 _PRO_MAX_CHARS = int(os.getenv("PRO_MAX_CHARS", "12000"))
+
+
+def _client_id(plan: str, token: str) -> str:
+    """用不可逆摘要隔离不同 Token 的任务记录，不把 Token 本身写入数据库。"""
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()[:16]
+    return f"{plan}:{digest}"
 
 
 def _token_context(token: str) -> dict:
@@ -33,7 +41,7 @@ def _token_context(token: str) -> dict:
             "can_reduce": True,
             "can_remote_review": True,
             "max_chars": _PRO_MAX_CHARS,
-            "client_id": f"pro:{token[-6:]}",
+            "client_id": _client_id("pro", token),
         }
     if token in _FREE_API_TOKENS:
         # Free 套餐：不支持改写和二审，字数有限制
@@ -42,7 +50,7 @@ def _token_context(token: str) -> dict:
             "can_reduce": False,
             "can_remote_review": False,
             "max_chars": _FREE_MAX_CHARS,
-            "client_id": f"free:{token[-6:]}",
+            "client_id": _client_id("free", token),
         }
     if _API_TOKEN and token == _API_TOKEN:
         # 旧版单一 Token，向下兼容，权限等同 Pro
@@ -51,7 +59,7 @@ def _token_context(token: str) -> dict:
             "can_reduce": True,
             "can_remote_review": True,
             "max_chars": _PRO_MAX_CHARS,
-            "client_id": "legacy:default",
+            "client_id": _client_id("legacy", token),
         }
     raise HTTPException(status_code=401, detail="Token 无效，拒绝访问")
 
@@ -59,10 +67,8 @@ def _token_context(token: str) -> dict:
 def _verify_token(credentials: HTTPAuthorizationCredentials = Security(_security)) -> dict:
     """FastAPI 安全依赖：从请求头 Bearer Token 中提取并校验权限上下文。
 
-    若服务端未配置任何 Token 则返回 500，Token 无效则返回 401。
+    未配置 API_TOKEN 时使用 Demo 默认值 aigcchecker；Token 无效时返回 401。
     """
-    if not (_API_TOKEN or _FREE_API_TOKENS or _PRO_API_TOKENS):
-        raise HTTPException(status_code=500, detail="服务端未配置 API Token")
     return _token_context(credentials.credentials)
 
 
@@ -70,6 +76,7 @@ class ScanRequest(BaseModel):
     content: str
     model: Optional[str] = None
     api_source: str = API_SOURCE
+    request_source: Literal["demo", "test", "api"] = "api"
 
 
 def _log(tag: str, task_id: str, request: ScanRequest, text_len: int) -> None:
@@ -102,9 +109,29 @@ async def scan_document(request: ScanRequest, auth_context: dict = Security(_ver
             detail=f"当前套餐最多支持 {auth_context['max_chars']} 个字符，当前文本过长。",
         )
     task_id = new_task_id("scan")
+    start_task(
+        task_id=task_id,
+        client_id=auth_context["client_id"],
+        task_type="scan",
+        source=request.request_source,
+        plan=auth_context["plan"],
+        requested_api_source=request.api_source,
+        requested_model=request.model,
+        char_count=len(text),
+    )
     try:
         _log("scan", task_id, request, len(text))
-        return await run_check(
+        record_task_event(
+            task_id,
+            "api.scan.accept",
+            details={
+                "source": request.request_source,
+                "plan": auth_context["plan"],
+                "chars": len(text),
+                "max_chars": auth_context["max_chars"],
+            },
+        )
+        result = await run_check(
             content=text,
             model=request.model,
             api_source=request.api_source,
@@ -112,11 +139,36 @@ async def scan_document(request: ScanRequest, auth_context: dict = Security(_ver
             can_remote_review=auth_context["can_remote_review"],
             task_id=task_id,
         )
+        result["task_id"] = task_id
+        record_task_event(
+            task_id,
+            "api.scan.return",
+            status="success",
+            details={
+                "label": result.get("label"),
+                "ai_probability": result.get("ai_probability"),
+                "confidence": result.get("confidence"),
+            },
+        )
+        finish_task(
+            task_id,
+            {
+                "label": result.get("label"),
+                "ai_probability": result.get("ai_probability"),
+                "confidence": result.get("confidence"),
+                "review_used": result.get("review", {}).get("used", False),
+            },
+        )
+        return result
     except ValueError as exc:
         logger.warning("task=%s step=api.scan.parse_error error=%s", task_id, exc)
+        record_task_event(task_id, "api.scan.parse_error", status="failed", details={"error_type": type(exc).__name__})
+        fail_task(task_id, "engine_parse_error")
         raise HTTPException(status_code=502, detail="底层引擎返回了无法解析的格式，请重试。")
     except Exception as exc:
         logger.exception("task=%s step=api.scan.error error=%s", task_id, exc)
+        record_task_event(task_id, "api.scan.error", status="failed", details={"error_type": type(exc).__name__})
+        fail_task(task_id, "engine_error")
         raise HTTPException(status_code=500, detail=f"检测引擎服务异常: {str(exc)}")
 
 
@@ -139,9 +191,29 @@ async def reduce_document(request: ScanRequest, auth_context: dict = Security(_v
             detail=f"当前套餐最多支持 {auth_context['max_chars']} 个字符，当前文本过长。",
         )
     task_id = new_task_id("reduce")
+    start_task(
+        task_id=task_id,
+        client_id=auth_context["client_id"],
+        task_type="reduce",
+        source=request.request_source,
+        plan=auth_context["plan"],
+        requested_api_source=request.api_source,
+        requested_model=request.model,
+        char_count=len(text),
+    )
     try:
         _log("reduce", task_id, request, len(text))
-        return await run_reduce(
+        record_task_event(
+            task_id,
+            "api.reduce.accept",
+            details={
+                "source": request.request_source,
+                "plan": auth_context["plan"],
+                "chars": len(text),
+                "max_chars": auth_context["max_chars"],
+            },
+        )
+        result = await run_reduce(
             content=text,
             model=request.model,
             api_source=request.api_source,
@@ -149,9 +221,53 @@ async def reduce_document(request: ScanRequest, auth_context: dict = Security(_v
             can_remote_review=auth_context["can_remote_review"],
             task_id=task_id,
         )
+        result["task_id"] = task_id
+        record_task_event(
+            task_id,
+            "api.reduce.return",
+            status="success",
+            details={
+                "rewrite": result.get("rewrite"),
+                "ai_probability": result.get("ai_probability"),
+                "ai_reduced_probability": result.get("ai_reduced_probability"),
+                "quality_score": result.get("quality_score"),
+            },
+        )
+        finish_task(
+            task_id,
+            {
+                "rewrite": result.get("rewrite"),
+                "ai_probability": result.get("ai_probability"),
+                "ai_reduced_probability": result.get("ai_reduced_probability"),
+                "quality_score": result.get("quality_score"),
+            },
+        )
+        return result
     except ValueError as exc:
         logger.warning("task=%s step=api.reduce.parse_error error=%s", task_id, exc)
+        record_task_event(task_id, "api.reduce.parse_error", status="failed", details={"error_type": type(exc).__name__})
+        fail_task(task_id, "engine_parse_error")
         raise HTTPException(status_code=502, detail="底层引擎返回了无法解析的格式，请重试。")
     except Exception as exc:
         logger.exception("task=%s step=api.reduce.error error=%s", task_id, exc)
+        record_task_event(task_id, "api.reduce.error", status="failed", details={"error_type": type(exc).__name__})
+        fail_task(task_id, "engine_error")
         raise HTTPException(status_code=500, detail=f"降 AI 引擎服务异常: {str(exc)}")
+
+
+@router.get("/tasks")
+async def task_history(
+    limit: int = Query(default=30, ge=1, le=100),
+    _auth_context: dict = Security(_verify_token),
+):
+    """返回最近任务的脱敏摘要，不包含任何用户原文或改写内容。"""
+    return {"items": list_tasks(client_id=_auth_context["client_id"], limit=limit)}
+
+
+@router.get("/tasks/{task_id}")
+async def task_detail(task_id: str, _auth_context: dict = Security(_verify_token)):
+    """返回单个任务的完整执行轨迹；每一步仅暴露运行元数据。"""
+    task = get_task(task_id, client_id=_auth_context["client_id"])
+    if not task:
+        raise HTTPException(status_code=404, detail="任务记录不存在或已过期")
+    return task

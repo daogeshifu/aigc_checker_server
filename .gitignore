@@ -10,3 +10,4 @@ services/*.pyc
 .DS_Store
 nohup.out
 server.pid
+data/

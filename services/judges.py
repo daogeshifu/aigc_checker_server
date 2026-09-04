@@ -7,6 +7,7 @@ import json
 from services.ollama_client import generate_json
 from services.prompts import QWEN_CHUNK_SYSTEM_PROMPT
 from services.schemas import QwenJudgeResult
+from services.task_log import record_task_event
 
 
 logger = logging.getLogger(__name__)
@@ -244,12 +245,35 @@ async def judge_chunk_with_qwen(
 
     should_skip, skip_reason = _should_skip_qwen(features, genre, features.get("language", "mixed"))
     if should_skip:
+        record_task_event(
+            task_id,
+            "judge.route.heuristic",
+            status="skipped",
+            details={
+                "chunk_id": chunk_id,
+                "route": "statistics_only",
+                "reason": skip_reason,
+                "model_called": False,
+            },
+        )
         heuristic = _heuristic_fallback(features, genre)
         heuristic["judge_mode"] = "heuristic_skip"
         heuristic["judge_skip_reason"] = skip_reason
         return heuristic
 
     try:
+        record_task_event(
+            task_id,
+            "judge.route.qwen",
+            status="running",
+            details={
+                "chunk_id": chunk_id,
+                "route": "ollama_qwen",
+                "provider": "ollama",
+                "model": model or "default",
+                "model_called": True,
+            },
+        )
         data = await generate_json(
             system_prompt=QWEN_CHUNK_SYSTEM_PROMPT,
             user_prompt=user_prompt,
@@ -262,6 +286,18 @@ async def judge_chunk_with_qwen(
         validated = QwenJudgeResult.model_validate(data)
         result = validated.model_dump()
         result["judge_mode"] = "qwen"
+        record_task_event(
+            task_id,
+            "judge.qwen.finish",
+            status="success",
+            details={
+                "chunk_id": chunk_id,
+                "model": model or "default",
+                "raw_ai_score": result.get("ai_score"),
+                "raw_confidence": result.get("confidence"),
+                "label": result.get("label"),
+            },
+        )
         return result
     except Exception as exc:
         # LLM 调用失败（超时、格式错误等），降级为启发式规则，记录警告日志
@@ -272,4 +308,17 @@ async def judge_chunk_with_qwen(
             model or "default",
             exc,
         )
-        return _heuristic_fallback(features, genre)
+        record_task_event(
+            task_id,
+            "judge.qwen.fallback",
+            status="failed",
+            details={
+                "chunk_id": chunk_id,
+                "model": model or "default",
+                "error_type": type(exc).__name__,
+                "fallback": "statistics_only",
+            },
+        )
+        fallback = _heuristic_fallback(features, genre)
+        fallback["judge_skip_reason"] = "qwen_provider_error"
+        return fallback

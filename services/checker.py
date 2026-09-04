@@ -25,6 +25,7 @@ from services.prompts import (
     REMOTE_REVIEW_SYSTEM_PROMPT,
 )
 from services.schemas import ReduceRewriteResult, RemoteReviewResult, RewriteDraftResult
+from services.task_log import record_task_event
 
 
 logging.basicConfig(
@@ -76,6 +77,7 @@ def _log_task(task_id: str | None, step: str, **fields) -> None:
         logger.info("task=%s step=%s %s", task_id or "-", step, payload)
     else:
         logger.info("task=%s step=%s", task_id or "-", step)
+    record_task_event(task_id, step, details=fields)
 
 
 def _normalize_api_source(source: str | None) -> str:
@@ -912,6 +914,7 @@ async def run_check(
     plan: str = "free",
     can_remote_review: bool = False,
     task_id: str | None = None,
+    scan_phase: str = "primary_scan",
 ) -> dict:
     """主检测流程：清洗文本 → 检测文体 → 提取特征 → 分块打分 → 聚合结果 → 可选二审 → 按套餐裁剪。
 
@@ -928,31 +931,63 @@ async def run_check(
     # Step 1: 文本预处理
     requested_api_source = _normalize_api_source(api_source)
     effective_scan_model = _resolve_scan_model(requested_api_source, model)
-    cleaned = clean_text(content)
-    language = detect_language(cleaned)
-    genre = detect_genre(cleaned)
-    doc_features = extract_document_features(cleaned, language=language)
-    chunks = chunk_text(cleaned)
     _log_task(
         task_id,
         "scan.start",
+        scan_phase=scan_phase,
         requested_api_source=requested_api_source,
         requested_model=model or "default",
         scan_source=SCAN_API_SOURCE,
         scan_model=effective_scan_model,
         plan=plan,
-        language=language,
-        chars=len(cleaned),
+        input_chars=len(content),
+    )
+    cleaned = clean_text(content)
+    _log_task(task_id, "scan.preprocess.clean", scan_phase=scan_phase, chars_before=len(content), chars_after=len(cleaned))
+    language = detect_language(cleaned)
+    _log_task(task_id, "scan.language.detect", scan_phase=scan_phase, language=language)
+    genre = detect_genre(cleaned)
+    _log_task(task_id, "scan.genre.detect", scan_phase=scan_phase, genre=genre)
+    doc_features = extract_document_features(cleaned, language=language)
+    _log_task(
+        task_id,
+        "scan.features.document",
+        scan_phase=scan_phase,
+        token_count=doc_features.get("token_count"),
+        sentence_count=doc_features.get("sentence_count"),
+        burstiness=doc_features.get("burstiness"),
+        lexical_diversity=doc_features.get("lexical_diversity"),
+        repeated_ngram_ratio=doc_features.get("repeated_ngram_ratio"),
+    )
+    chunks = chunk_text(cleaned)
+    _log_task(
+        task_id,
+        "scan.chunking.finish",
+        scan_phase=scan_phase,
+        strategy="sentence_spans",
+        target_chars=320,
+        min_chars=180,
         chunks=len(chunks),
     )
-    _log_task(task_id, "scan.genre", genre=genre)
 
     # Step 2: 逐分块提取特征 + LLM 打分 + 规则综合评分
     enriched_chunks: list[dict] = []
     for chunk in chunks:
         chunk_language = detect_language(chunk["text"]) if language == "mixed" else language
         features = extract_chunk_features(chunk["text"], language=chunk_language)
-        _log_task(task_id, "scan.chunk", chunk_id=chunk["chunk_id"], chunk_language=chunk_language, chars=len(chunk["text"]))
+        _log_task(
+            task_id,
+            "scan.chunk.features",
+            scan_phase=scan_phase,
+            chunk_id=chunk["chunk_id"],
+            chunk_language=chunk_language,
+            chars=len(chunk["text"]),
+            token_count=features.get("token_count"),
+            sentence_count=features.get("sentence_count"),
+            burstiness=features.get("burstiness"),
+            lexical_diversity=features.get("lexical_diversity"),
+            repeated_ngram_ratio=features.get("repeated_ngram_ratio"),
+        )
         # 调用 Qwen 本地模型对分块进行风格判断，失败时自动降级为启发式规则
         qwen_result = await judge_chunk_with_qwen(
             chunk["text"],
@@ -964,6 +999,18 @@ async def run_check(
         )
         # 融合 LLM 分数（55%）、统计特征分（30%）、风格信号分（15%）
         scored = score_chunk(features, qwen_result, genre)
+        _log_task(
+            task_id,
+            "scan.chunk.score",
+            scan_phase=scan_phase,
+            chunk_id=chunk["chunk_id"],
+            judge_mode=qwen_result.get("judge_mode", "qwen"),
+            qwen_score=scored.get("score_breakdown", {}).get("qwen_score"),
+            feature_score=scored.get("score_breakdown", {}).get("feature_score"),
+            style_score=scored.get("score_breakdown", {}).get("style_score"),
+            final_score=scored.get("ai_score"),
+            confidence=scored.get("confidence"),
+        )
         enriched_chunks.append(
             {
                 **chunk,
@@ -980,6 +1027,16 @@ async def run_check(
 
     # Step 3: 将分块结果聚合为文档级结论
     result = aggregate_document(enriched_chunks, genre, doc_features)
+    _log_task(
+        task_id,
+        "scan.aggregate.finish",
+        scan_phase=scan_phase,
+        method="character_weighted_average",
+        chunks=len(enriched_chunks),
+        ai_probability=result.get("ai_probability"),
+        confidence=result.get("confidence"),
+        label=result.get("label"),
+    )
     result["engine"] = {
         "checker": "hybrid-local",
         "requested_api_source": requested_api_source,
@@ -998,19 +1055,44 @@ async def run_check(
         "reason": review_reason,
     }
     result["review"] = review_meta
+    _log_task(
+        task_id,
+        "review.decision",
+        scan_phase=scan_phase,
+        trigger=should_review,
+        reason=review_reason,
+        provider=PRO_REVIEW_SOURCE if should_review else "none",
+        model=_review_model_for(PRO_REVIEW_SOURCE) if should_review else "none",
+    )
 
     if should_review:
-        _log_task(task_id, "review.trigger", reason=review_reason, provider=PRO_REVIEW_SOURCE)
+        _log_task(task_id, "review.trigger", scan_phase=scan_phase, reason=review_reason, provider=PRO_REVIEW_SOURCE)
         review_result = await _run_remote_review(cleaned, result, task_id=task_id)
         if review_result:
             # 将二审分数融合进最终结果
             result = _merge_review_result(result, review_result, review_meta)
-            _log_task(task_id, "review.merge", provider=PRO_REVIEW_SOURCE, model=_review_model_for(PRO_REVIEW_SOURCE))
+            _log_task(
+                task_id,
+                "review.merge",
+                scan_phase=scan_phase,
+                provider=PRO_REVIEW_SOURCE,
+                model=_review_model_for(PRO_REVIEW_SOURCE),
+                review_score=review_result.get("ai_score"),
+                review_confidence=review_result.get("confidence"),
+                final_score=result.get("ai_probability"),
+            )
     else:
-        _log_task(task_id, "review.skip", reason=review_reason)
+        _log_task(task_id, "review.skip", scan_phase=scan_phase, reason=review_reason)
 
     # Step 5: 按套餐裁剪返回字段
-    _log_task(task_id, "scan.finish", ai_probability=result.get("ai_probability"), confidence=result.get("confidence"), label=result.get("label"))
+    _log_task(
+        task_id,
+        "scan.finish",
+        scan_phase=scan_phase,
+        ai_probability=result.get("ai_probability"),
+        confidence=result.get("confidence"),
+        label=result.get("label"),
+    )
     return _trim_result_by_plan(result, plan=plan)
 
 
@@ -1043,6 +1125,7 @@ async def run_reduce(
         plan=plan,
         can_remote_review=can_remote_review,
         task_id=task_id,
+        scan_phase="original_scan",
     )
     # Step 2: 根据检测结果生成改写文本
     rewrite_result = await _rewrite_content(content, original_result, model=model, api_source=api_source, task_id=task_id)
@@ -1056,6 +1139,7 @@ async def run_reduce(
         plan=plan,
         can_remote_review=can_remote_review,
         task_id=task_id,
+        scan_phase="reduced_scan",
     )
 
     # Step 4: 计算改写前后概率差异和质量综合得分
@@ -1063,6 +1147,14 @@ async def run_reduce(
     after = float(reduced_result["ai_probability"])
     rewrite_succeeded = bool(rewrite_result.get("rewrite", True))
     quality = rewrite_result.get("quality_score", 55.0) if not rewrite_succeeded else _quality_score(content, reduced_text, before, after)
+    _log_task(
+        task_id,
+        "reduce.quality.calculate",
+        before=f"{before:.2f}",
+        after=f"{after:.2f}",
+        improvement=f"{max(0.0, before - after):.2f}",
+        quality=quality,
+    )
 
     if rewrite_succeeded and after >= before:
         _log_task(task_id, "reduce.guard.rollback", reason="probability_not_improved", before=f"{before:.2f}", after=f"{after:.2f}")

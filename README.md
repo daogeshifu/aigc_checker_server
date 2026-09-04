@@ -37,6 +37,8 @@
 - 可选二审：Pro 套餐可启用远程复核
 - 兼容前端：返回结构兼容旧前端常见字段，同时保留专业字段
 - 降 AI 改写：支持 `/api/reduce`，改写后自动重新检测
+- 可观测 Demo：快速体验与接口测试双模式，支持查看脱敏任务轨迹
+- 持久化任务日志：SQLite 记录模型路由、切词分块、评分与耗时，不保存用户原文
 
 ## 当前执行策略
 
@@ -94,8 +96,10 @@ services/
   preprocess.py
   prompts.py
   schemas.py
+  task_log.py
 
 main.py
+web/demo.html
 start.sh
 requirements.txt
 ```
@@ -237,7 +241,8 @@ Content-Type: application/json
 {
   "content": "Your text here",
   "model": "qwen3.5:9b",
-  "api_source": "ollama"
+  "api_source": "ollama",
+  "request_source": "api"
 }
 ```
 
@@ -248,6 +253,7 @@ Content-Type: application/json
 | `content` | string | 是 | 待检测文本 |
 | `model` | string | 否 | 请求模型名 |
 | `api_source` | string | 否 | 兼容字段：`ollama / azure / openrouter` |
+| `request_source` | string | 否 | 任务来源：`demo / test / api`，默认 `api` |
 
 返回字段核心包括：
 
@@ -263,6 +269,7 @@ Content-Type: application/json
 | `metrics` | `perplexity / burstiness / binoculars` |
 | `review` | 远程复核元信息 |
 | `plan` | 套餐标记 |
+| `task_id` | 本次请求的任务 ID，可用于查询脱敏执行轨迹 |
 
 示例请求：
 
@@ -290,6 +297,13 @@ curl -X POST "http://127.0.0.1:8027/api/scan" \
 - `model`
 - `changes`
 
+### 任务记录接口
+
+- `GET /api/tasks`：返回当前 Token 最近的任务摘要
+- `GET /api/tasks/{task_id}`：返回单个任务的完整执行步骤
+
+任务记录按 Token 隔离，只保存步骤、模型、分块数量、统计分数、状态和耗时等运行元数据。`content`、`text`、`prompt`、改写前后文本等字段会被强制脱敏。
+
 ## 环境配置
 
 复制：
@@ -303,9 +317,12 @@ cp .env.example .env
 ```env
 API_SOURCE=ollama
 
-API_TOKEN=legacy_pro_token
+API_TOKEN=aigcchecker
 FREE_API_TOKENS=free_token_1,free_token_2
 PRO_API_TOKENS=pro_token_1,pro_token_2
+
+TASK_LOG_DB_PATH=data/task_logs.db
+TASK_LOG_MAX_RECORDS=200
 
 FREE_MAX_CHARS=3000
 PRO_MAX_CHARS=12000
@@ -373,8 +390,11 @@ IS_PROD=y ./start.sh
 
 默认地址：
 
-- 服务首页：<http://127.0.0.1:8027>
+- 快速体验：<http://127.0.0.1:8027/demo>
+- 接口测试：<http://127.0.0.1:8027/test>
 - Swagger 文档：<http://127.0.0.1:8027/docs>
+
+未配置 `API_TOKEN` 时默认 Token 为 `aigcchecker`。生产环境请在 `.env` 中替换为高熵随机 Token。
 
 ## 与上层业务系统对接
 
