@@ -46,10 +46,10 @@ _EN_CONNECTOR_PATTERNS = [
     r"ultimately",
 ]
 _COMMON_DETAIL_PATTERNS = [
-    r"\b\d{4}[-/年]\d{1,2}(?:[-/月]\d{1,2}日?)?\b",
+    r"(?<!\d)\d{4}[-/年]\d{1,2}(?:[-/月]\d{1,2}日?)?(?!\d)",
     r"\b\d{1,2}:\d{2}\b",
-    r"\b\d+(?:\.\d+)?%\b",
-    r"\b(?:USD|RMB|CNY|￥|\$)\s?\d+(?:\.\d+)?\b",
+    r"(?<!\w)\d+(?:\.\d+)?%(?!\d)",
+    r"(?:(?<![A-Za-z])(?:USD|RMB|CNY)|[￥$])\s?\d+(?:\.\d+)?(?!\d)",
     r"(?:http|www\.)",
 ]
 _ZH_DETAIL_PATTERNS = _COMMON_DETAIL_PATTERNS + [
@@ -62,11 +62,8 @@ _EN_DETAIL_PATTERNS = _COMMON_DETAIL_PATTERNS + [
     r"\bv?\d+\.\d+(?:\.\d+)?\b",
     r"\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b",
     r"\b(?:ticket|issue|sprint|release)\s+#?\d+\b",
-    r"\b[A-Z]{2,}(?:\d+)?\b",
 ]
-_MIXED_DETAIL_PATTERNS = _ZH_DETAIL_PATTERNS + [
-    r"(?:邮箱|电话|微信|Slack|飞书|Jira|Confluence|Notion)",
-]
+_MIXED_DETAIL_PATTERNS = list(dict.fromkeys(_ZH_DETAIL_PATTERNS + _EN_DETAIL_PATTERNS))
 _STOPWORDS = {
     "the",
     "and",
@@ -120,7 +117,9 @@ def _count_connectors(text: str, language: str) -> int:
     """按语言统计连接词。"""
     lowered = text.lower()
     patterns = _ZH_CONNECTOR_PATTERNS if language == "zh" else _EN_CONNECTOR_PATTERNS if language == "en" else _ZH_CONNECTOR_PATTERNS + _EN_CONNECTOR_PATTERNS
-    return sum(len(re.findall(pattern, lowered)) for pattern in patterns)
+    return sum(len(re.findall(
+        rf"\b(?:{pattern})\b" if re.search(r"[a-z]", pattern) else pattern, lowered
+    )) for pattern in patterns)
 
 
 def _detail_signal_count(text: str, language: str) -> int:
@@ -131,7 +130,14 @@ def _detail_signal_count(text: str, language: str) -> int:
         patterns = _EN_DETAIL_PATTERNS
     else:
         patterns = _MIXED_DETAIL_PATTERNS
-    return sum(len(re.findall(pattern, text, flags=re.IGNORECASE)) for pattern in patterns)
+    # Overlapping matches (e.g. a date and a version) describe one detail.
+    matches = sorted({match.span() for pattern in patterns for match in re.finditer(pattern, text, re.IGNORECASE)})
+    count, previous_end = 0, -1
+    for start, end in matches:
+        if start >= previous_end:
+            count += 1
+        previous_end = max(previous_end, end)
+    return count
 
 
 def _repeated_ngram_ratio(text: str, language: str, n: int = 4) -> float:
@@ -164,11 +170,22 @@ def _repeated_ngram_ratio(text: str, language: str, n: int = 4) -> float:
     return repeated / len(grams) if grams else 0.0
 
 
-def _top_terms(tokens: list[str], limit: int = 10) -> list[str]:
-    """返回出现次数 > 1 的高频词（过滤停用词和单字符），用于识别可疑重复词汇。"""
-    filtered = [token for token in tokens if token not in _STOPWORDS and len(token) > 1]
-    counts = Counter(filtered)
-    return [token for token, count in counts.most_common(limit) if count > 1]
+def _repeated_terms(text: str, tokens: list[str], limit: int = 10) -> list[str]:
+    """English words and repeated CJK 2–4 character phrases; not semantic keywords."""
+    counts = Counter(token for token in tokens if token not in _STOPWORDS and len(token) > 1)
+    for run in re.findall(r"[\u4e00-\u9fff]+", text):
+        for size in (2, 3, 4):
+            counts.update(run[i:i + size] for i in range(len(run) - size + 1))
+    candidates = [term for term, count in counts.items() if count > 1 and term not in _STOPWORDS]
+    candidates.sort(key=lambda term: (-counts[term], -len(term), term))
+    selected = []
+    for term in candidates:
+        if any(term in longer and counts[term] == counts[longer] for longer in selected):
+            continue
+        selected.append(term)
+        if len(selected) == limit:
+            break
+    return selected
 
 
 def _extract_features(text: str, language: str | None = None) -> dict:
@@ -215,6 +232,7 @@ def _extract_features(text: str, language: str | None = None) -> dict:
     return {
         "char_count": char_count,
         "sentence_count": len(sentences),
+        "paragraph_count": len(paragraphs),
         "language": language,
         "avg_sentence_length": round(avg_sentence_length, 4),
         "sentence_length_std": round(sentence_length_std, 4),
@@ -229,7 +247,7 @@ def _extract_features(text: str, language: str | None = None) -> dict:
         "detail_signal_count": detail_signal_count,
         "digit_density": round(sum(ch.isdigit() for ch in compact) / char_count, 4) if char_count else 0.0,
         "list_line_ratio": round(list_line_ratio, 4),
-        "suspicious_terms": _top_terms(tokens),  # 高频词，用于词汇层面辅助判断
+        "suspicious_terms": _repeated_terms(cleaned, tokens),  # Repetition, not evidence of authorship
     }
 
 

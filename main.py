@@ -1,4 +1,5 @@
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
@@ -12,11 +13,29 @@ from api.detect import router as detect_router
 from services.checker import API_SOURCE, AZURE_DEFAULT_MODEL, OLLAMA_DEFAULT_MODEL, OPENROUTER_DEFAULT_MODEL
 
 
-app = FastAPI(title="AIGC Checker Engine", version="1.1")
+from services.ollama_client import start_ollama_client, close_ollama_client
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await start_ollama_client()
+    try:
+        yield
+    finally:
+        await close_ollama_client()
+
+
+app = FastAPI(title="AIGC Checker Engine", version="1.2", lifespan=lifespan)
 app.include_router(detect_router, prefix="/api")
 
 _DEMO_PAGE = Path(__file__).with_name("web") / "demo.html"
 _TASKS_PAGE = Path(__file__).with_name("web") / "tasks.html"
+
+
+@app.get("/health", include_in_schema=False)
+async def health():
+    """容器存活检查，不调用模型服务。"""
+    return {"status": "ok"}
 
 
 def _render_demo_page(initial_view: str = "demo") -> str:

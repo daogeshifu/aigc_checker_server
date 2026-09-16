@@ -59,7 +59,7 @@
 2. 执行语义改写
 3. 执行本地表达扰动
 4. 对改写结果再次检测
-5. 返回改写前后 AI 概率和质量分
+5. 返回改写前后 AI 风格风险分和质量分
 
 ## 系统架构
 
@@ -101,6 +101,9 @@ services/
 main.py
 web/demo.html
 start.sh
+disploy.sh
+Dockerfile
+compose.yaml
 requirements.txt
 ```
 
@@ -185,27 +188,23 @@ requirements.txt
 
 ## 评分逻辑
 
-chunk 级最终分数由三部分组成：
+chunk 级风险分融合模型判断和统计特征：
 
 ```text
-final_chunk_score =
-  0.55 * qwen_score +
-  0.30 * feature_score +
-  0.15 * style_score
+final_chunk_score = 0.70 * qwen_score + 0.30 * feature_score
+# 模型跳过/失败：只使用 feature_score；style_score 仅解释，不重复计权。
 ```
 
 之后再叠加：
 
 - 文体修正
-- 细节信号修正
-- 列表结构修正
 - 短文本收缩
 - 置信度缩放
 
 文档级 `ai_probability` 为：
 
 - 所有 chunk `ai_score` 按 chunk 长度加权平均
-- 再经过短文档和正式文体的保守修正
+- 不再重复应用文体和短文档降分；低置信度标记证据不足
 - 最终格式化为字符串，例如 `"63.40"`
 
 ## 会员体系
@@ -260,13 +259,13 @@ Content-Type: application/json
 | 字段 | 说明 |
 |---|---|
 | `label` | `AI Generated / Mixed / Human Written` |
-| `ai_probability` | 文档总 AI 率 |
+| `ai_probability` | 兼容旧客户端的风险分字符串，非校准概率 |
 | `confidence` | `low / medium / high` |
 | `document_features` | 文档级特征 |
 | `chunks` | chunk 级结果 |
 | `analysis` | `genre / language / high_risk_chunks` |
 | `summary` | 摘要信息 |
-| `metrics` | `perplexity / burstiness / binoculars` |
+| `metrics` | burstiness 为实测句长波动；perplexity 和 binoculars 未实现，返回 null |
 | `review` | 远程复核元信息 |
 | `plan` | 套餐标记 |
 | `task_id` | 本次请求的任务 ID，可用于查询脱敏执行轨迹 |
@@ -397,6 +396,44 @@ IS_PROD=y ./start.sh
 
 未配置 `API_TOKEN` 时默认 Token 为 `aigcchecker`。生产环境请在 `.env` 中替换为高熵随机 Token。
 
+## 线上 Docker 部署
+
+本地仍使用 `./start.sh`。线上在服务器的项目目录执行 `./disploy.sh`，需要 Docker Engine 20.10+；优先使用 Docker Compose 插件，未安装插件或只有旧版 `docker-compose` v1 时自动使用纯 Docker。
+
+首次部署：
+
+```bash
+# 在服务器上克隆或上传项目后，进入项目目录。
+cp .env.example .env
+# 编辑 .env，填写生产 Token、Ollama 地址和所需的远程模型密钥。
+./disploy.sh
+```
+
+后续更新再次执行 `./disploy.sh`。脚本自动执行 `git pull --ff-only`、构建镜像、重建容器和健康检查。构建失败不会停止原容器；重建期间会短暂中断服务。如果代码由上传方式更新，或需要直接部署当前目录代码：
+
+```bash
+SKIP_GIT_PULL=1 ./disploy.sh
+```
+
+- 容器名和镜像名：`aigc-checker-server`、`aigc-checker-server:latest`。
+- 端口：宿主机 `8027` 映射容器 `8027`，访问 `http://服务器地址:8027/demo`，API 文档为 `/docs`。
+- 生产容器直接运行 Uvicorn，不启用 `--reload`，退出后由 Docker 自动重启。
+- `.env` 仅在运行时加载，不打进镜像。为兼容纯 Docker 模式，使用 `KEY=value`，不要加外层引号、`export`、行尾注释或变量引用。
+- SQLite 固定保存到容器 `/app/data/task_logs.db`，挂载服务器项目下的 `data/`。重建容器保留任务记录；如原服务使用自定义数据库路径，请先将数据库备份迁移到 `data/task_logs.db`。
+- Ollama 单独运行，本镜像只部署 API 服务。`OLLAMA_BASE_URL` 必须能从容器访问；如果 Ollama 在同一宿主机上，可使用 `http://host.docker.internal:11434`，并让 Ollama 监听容器可访问的地址。容器中的 `127.0.0.1` 指向容器自身。
+- 健康检查使用 `/health`，只验证 API 进程响应，不验证 Ollama 或远程模型可用性。
+- 如果服务器之前通过 `start.sh` 启动了服务，先停止原进程，释放 `8027` 端口再部署。
+
+常用维护命令（两种部署模式通用）：
+
+```bash
+docker ps --filter name=aigc-checker-server
+docker logs --tail 100 -f aigc-checker-server
+docker restart aigc-checker-server
+docker stop aigc-checker-server
+curl --fail http://127.0.0.1:8027/health
+```
+
 ## 与上层业务系统对接
 
 该项目非常适合做独立检测后端，被以下系统调用：
@@ -454,3 +491,45 @@ IS_PROD=y ./start.sh
 - Pull Request
 
 如果你在生产环境中使用了这个项目，欢迎附上你的使用场景和优化建议。
+
+
+## 检测引擎 2.0 行为与迁移
+
+- 修复英文句号断句，保护常见称谓、首字母、小数、版本号与域名；句长统计保留短句。
+- 分块目标 320 字符、最小目标 180、硬上限 480；无标点长文同样拆分。`start/end` 是清洗后文本的 Python 字符偏移，非字节偏移。字符上限不等同模型 token 上限。
+- 普通英文单词/大写缩写不再算具体细节，重叠细节只计一次；中英文连接词分别匹配，中文重复短语按 2–4 字片段提取，不宣称语义分词。
+- Qwen 输入不再包含数值特征，风格子分只作解释。暂用 70% Qwen + 30% 统计；模型跳过或失败时只用统计。数字细节不再额外减分或触发模型跳过，文体修正仅在分块层执行一次。这些权重和文体规则尚未用标注集拟合。
+- 低置信度返回 `label: "Insufficient Evidence"`、`assessment_status: "insufficient_evidence"`；可继续读取 `score_label` 查看原有风险区间标签。正常结果状态为 `assessed`。消费者须支持新增标签。
+- `risk_score` 为 0–100 数字；`ai_probability` 保留原字符串格式。`score_semantics: "uncalibrated_risk_score"` 和 `calibrated: false` 明确表示尚非来源概率。
+- 未实现的 `metrics.perplexity`、`metrics.binoculars` 及分块代理字段始终为 `null`；模型不再生成这些数字。消费者不可将 null 当 0。
+- 推荐使用 `segments`，`sentences` 作为兼容别名保留；二者 `granularity` 均为 `chunk`。`summary.percentages` 只作历史展示权重，不代表实际内容组成比例。`vocab` 只说明重复，不能作为来源证据。
+- `warnings` 记录规则降级、短文本和检测分歧。全文置信度按块长度加权；规则结果不因互相一致而提升置信度。
+- 远端复核不读取本地数值分数，选择高风险、分歧和代表片段并提供全文；严重分歧时标记证据不足。远端只更新文档结论，分块分数仍是本地结果（`review.scope: "document_only"`）。
+- FastAPI lifespan 复用 Ollama HTTP 连接，并用 `OLLAMA_MAX_CONCURRENCY` 限制进程内模型请求；`SCAN_CHUNK_CONCURRENCY` 限制每篇文档并发任务。默认均为 1，部署多 worker 时每个进程各有额度。只有完成 GPU 压测后再增大。
+- JSON 输出最少 256 tokens，兼容旧 `.env` 的 96 配置；检测到 `done_reason=length` 后增大预算重试一次。此改动需要重启服务生效。
+
+### 回归验证
+
+```bash
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+测试使用合成文本和模拟模型响应，不调用远程模型；回归通过不代表已验证真实检测准确率。
+
+### 离线评测
+
+保存有人工标签的样本及实际 `/api/scan` 返回结果为 JSONL，每行例如：
+
+```json
+{"id":"sample-001","group_id":"source-001","split":"test","label":"human","language":"zh","genre":"general","char_count":500,"prediction":{"risk_score":25.4,"assessment_status":"assessed"}}
+```
+
+以上仅为格式示例，不能作为准确率证据。标注应覆盖 human / ai / mixed、人工润色 AI、AI 润色人工、不同生成模型、语言、文体与长度。同一原文及改写版本必须共享 `group_id`，且仅归属一个 train / calibration / test 分组。
+
+```bash
+.venv/bin/python scripts/evaluate_detection.py data/labeled_predictions.jsonl --split test --threshold 70 --output data/evaluation.json
+```
+
+脚本完全离线，检查重复 ID、跨分组来源泄漏和非法分数；输出误报率、召回率、覆盖率、各类拒判率、AUROC、风险分桶实际 AI 比例，以及语言/文体/长度切片。混合标签不参与二分类指标；证据不足保留在误报率和召回率的分母，防止通过大量拒判虚增指标。
+
+下一步需要真实标注数据：只在训练/校准集调整权重、阈值与概率校准，在冻结的测试集验证。真实 token 概率、Binoculars / Fast-DetectGPT 仍需独立模型服务和本地语言评测，本版本没有把未执行的算法伪装成已接入。

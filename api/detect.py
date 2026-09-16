@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
+from services.preprocess import clean_text
 from services.checker import API_SOURCE, new_task_id, run_check, run_reduce
 from services.task_log import fail_task, finish_task, get_task, list_tasks, record_task_event, start_task
 
@@ -103,7 +104,7 @@ async def scan_document(request: ScanRequest, auth_context: dict = Security(_ver
     """
     text = request.content.strip()
     # 最小长度限制：过短的文本无法提取有效特征
-    if len(text) < 50:
+    if len(clean_text(text)) < 50:
         raise HTTPException(status_code=400, detail="文本太短，无法进行有效分析，请至少输入50个字符。")
     # 最大长度限制：由套餐权限决定
     if len(text) > auth_context["max_chars"]:
@@ -183,7 +184,7 @@ async def reduce_document(request: ScanRequest, auth_context: dict = Security(_v
     - 文本长度限制同 /scan 接口
     """
     text = request.content.strip()
-    if len(text) < 50:
+    if len(clean_text(text)) < 50:
         raise HTTPException(status_code=400, detail="文本太短，无法进行有效处理，请至少输入50个字符。")
     # 功能权限校验：Free 套餐不允许使用降 AI 改写
     if not auth_context["can_reduce"]:

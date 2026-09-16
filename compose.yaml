@@ -1,0 +1,24 @@
+services:
+  aigc-checker-server:
+    container_name: aigc-checker-server
+    image: aigc-checker-server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      # 固定到持久化目录，避免 .env 中的宿主机路径导致数据丢失。
+      TASK_LOG_DB_PATH: /app/data/task_logs.db
+    ports:
+      - "8027:8027"
+    volumes:
+      - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

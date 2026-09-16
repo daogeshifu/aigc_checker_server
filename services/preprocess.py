@@ -29,108 +29,68 @@ def clean_text(text: str) -> str:
     return cleaned.strip()
 
 
-def _is_short_segment(text: str) -> bool:
-    """判断文本段是否过短（三项同时满足）：中文 < 20 字、英文词 < 15 个、紧凑长度 < 35。
+_ABBREVIATIONS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st", "vs", "e.g", "i.e"}
 
-    过短的段落通常是标题或过渡句，单独评分可靠性低，会被合并到相邻段落。
-    """
-    zh_chars = len(re.findall(r"[\u4e00-\u9fff]", text))
-    en_words = len(re.findall(r"[A-Za-z]+(?:'[A-Za-z]+)?", text))
-    compact_len = len(re.sub(r"\s+", "", text))
-    return zh_chars < 20 and en_words < 15 and compact_len < 35
+
+def _period_ends_sentence(text: str, index: int) -> bool:
+    # Decimal points, versions, domains and emails are not sentence boundaries.
+    next_index = index + 1
+    while next_index < len(text) and text[next_index] in _CLOSERS:
+        next_index += 1
+    if next_index < len(text) and not text[next_index].isspace():
+        return False
+    previous = re.search(r"([A-Za-z.]+)$", text[:index])
+    if previous:
+        word = previous.group(1)
+        if word.lower() in _ABBREVIATIONS:
+            return False
+        if len(word) == 1 and word.isupper() and next_index < len(text):
+            return False
+        if re.fullmatch(r"(?:[A-Za-z]\.)+[A-Za-z]", word):
+            # An acronym may end a sentence; retain it before a lowercase continuation.
+            following = text[next_index:].lstrip()
+            return not following or following[0].isupper()
+    return True
 
 
 def _split_sentences_with_spans(text: str) -> list[dict]:
-    """按句末标点或双换行切分文本为带位置信息的句子 span 列表。
+    """Sentence spans use Python character offsets in cleaned text, never byte offsets.
 
-    切分后会合并过短的段落（_is_short_segment），防止标题行单独成块导致评分失真。
-    每个 span 包含 start、end（在原文中的字节偏移）和 text（去空白后的文本）。
+    Keep short sentences for statistics; chunk_text groups them for model inference.
     """
-    if not text:
-        return []
-
-    spans: list[dict] = []
+    spans = []
     start = 0
     index = 0
-    length = len(text)
 
-    while index < length:
+    def append_span(end: int) -> None:
+        nonlocal start
+        raw = text[start:end]
+        left = start + len(raw) - len(raw.lstrip())
+        right = end - (len(raw) - len(raw.rstrip()))
+        if left < right:
+            spans.append({"start": left, "end": right, "text": text[left:right]})
+        start = end
+
+    while index < len(text):
         ch = text[index]
-        is_double_newline = ch == "\n" and index + 1 < length and text[index + 1] == "\n"
-        is_sentence_end = ch in _SENTENCE_ENDINGS
-
-        if is_sentence_end or is_double_newline:
+        boundary = ch in _SENTENCE_ENDINGS or (ch == "." and _period_ends_sentence(text, index))
+        if boundary:
             end = index + 1
-            if is_sentence_end:
-                # 跳过紧跟在句末标点后的关闭符号（引号、括号等）
-                while end < length and text[end] in _CLOSERS:
-                    end += 1
-
-            raw = text[start:end]
-            left_trim = len(raw) - len(raw.lstrip())
-            right_trim = len(raw) - len(raw.rstrip())
-            actual_start = start + left_trim
-            actual_end = end - right_trim
-            segment = text[actual_start:actual_end]
-            if segment.strip():
-                spans.append({"start": actual_start, "end": actual_end, "text": segment.strip()})
-            start = end
-        index += 1
-
-    # 处理最后一个未以标点结尾的文本段
-    if start < length:
-        raw = text[start:length]
-        left_trim = len(raw) - len(raw.lstrip())
-        right_trim = len(raw) - len(raw.rstrip())
-        actual_start = start + left_trim
-        actual_end = length - right_trim
-        segment = text[actual_start:actual_end]
-        if segment.strip():
-            spans.append({"start": actual_start, "end": actual_end, "text": segment.strip()})
-
-    # 切分失败时将整个文本作为一个 span 返回
-    if not spans:
-        return [{"start": 0, "end": len(text), "text": text}]
-
-    # 短段落合并：优先向后合并，否则向前合并到已处理的最后一段
-    merged: list[dict] = []
-    cursor = 0
-    while cursor < len(spans):
-        current = spans[cursor]
-        if _is_short_segment(current["text"]) and cursor + 1 < len(spans):
-            # 短段向后合并：将当前段与下一段拼为一段
-            nxt = spans[cursor + 1]
-            merged.append(
-                {
-                    "start": current["start"],
-                    "end": nxt["end"],
-                    "text": text[current["start"] : nxt["end"]].strip(),
-                }
-            )
-            cursor += 2
-            continue
-
-        if _is_short_segment(current["text"]) and merged:
-            # 短段向前合并：追加到 merged 最后一段
-            previous = merged.pop()
-            merged.append(
-                {
-                    "start": previous["start"],
-                    "end": current["end"],
-                    "text": text[previous["start"] : current["end"]].strip(),
-                }
-            )
-            cursor += 1
-            continue
-
-        merged.append(current)
-        cursor += 1
-
-    return merged
+            while end < len(text) and (text[end] in _CLOSERS or text[end] in _SENTENCE_ENDINGS):
+                end += 1
+            append_span(end)
+            index = end
+        elif ch == "\n" and index + 1 < len(text) and text[index + 1] == "\n":
+            append_span(index + 2)
+            index += 2
+        else:
+            index += 1
+    append_span(len(text))
+    return spans
 
 
 def split_sentences(text: str) -> list[str]:
-    """返回清洗后文本的句子列表（仅文本内容，不含位置信息）。"""
+    """Return sentences without merging short ones, for unbiased length statistics."""
     return [item["text"] for item in _split_sentences_with_spans(clean_text(text))]
 
 
@@ -159,78 +119,52 @@ def detect_language(text: str) -> str:
     return "zh" if zh_chars >= latin_chars else "en"
 
 
-def chunk_text(text: str, target_size: int = 320, min_size: int = 180) -> list[dict]:
-    """将文本切分为用于逐块评分的分块列表。
+def chunk_text(text: str, target_size: int = 320, min_size: int = 180, max_size: int = 480) -> list[dict]:
+    """Group sentence spans with a hard character limit, including unpunctuated text.
 
-    策略：累积句子直到字符数接近 target_size 时输出一块（flush）；
-    若最后剩余的句子不足 min_size，则合并到上一块，避免孤立短块。
-    每个分块包含 chunk_id、start/end（在清洗后文本的偏移）和 text。
+    Offsets refer to clean_text(text). Whitespace counts toward the context budget.
+    max_size is a character bound, not a guarantee about model token counts.
     """
+    if not 0 < min_size <= target_size <= max_size:
+        raise ValueError("Require 0 < min_size <= target_size <= max_size")
     cleaned = clean_text(text)
-    if not cleaned:
-        return []
+    spans = []
+    for sentence in _split_sentences_with_spans(cleaned):
+        start, end = sentence["start"], sentence["end"]
+        while start < end:
+            stop = min(start + max_size, end)
+            if stop < end:
+                # Prefer a word boundary, but always make progress on long tokens/CJK.
+                space = cleaned.rfind(" ", start + max_size // 2, stop)
+                if space != -1:
+                    stop = space
+            raw = cleaned[start:stop]
+            left = start + len(raw) - len(raw.lstrip())
+            right = stop - (len(raw) - len(raw.rstrip()))
+            if left < right:
+                spans.append({"start": left, "end": right})
+            start = stop
+            while start < end and cleaned[start].isspace():
+                start += 1
 
-    sentence_spans = _split_sentences_with_spans(cleaned)
-    if not sentence_spans:
-        return [{"chunk_id": 0, "start": 0, "end": len(cleaned), "text": cleaned}]
-
-    chunks: list[dict] = []
-    current: list[dict] = []  # 当前正在积累的句子 span 列表
-    current_size = 0
-
-    def flush() -> None:
-        """将 current 中积累的句子合并为一个 chunk 并追加到 chunks。"""
-        if not current:
-            return
-        chunk_id = len(chunks)
-        start = current[0]["start"]
-        end = current[-1]["end"]
-        chunks.append(
-            {
-                "chunk_id": chunk_id,
-                "start": start,
-                "end": end,
-                "text": cleaned[start:end].strip(),
-            }
-        )
-
-    for span in sentence_spans:
-        sentence_size = len(re.sub(r"\s+", "", span["text"]))
-        projected = current_size + sentence_size
-        # 加入当前句后超过目标大小，且已积累内容满足最小块要求，则先输出再开新块
-        if current and projected > target_size and current_size >= min_size:
-            flush()
-            current = [span]
-            current_size = sentence_size
-            continue
-
-        current.append(span)
-        current_size = projected
-
-    if current:
-        # 最后剩余内容不足 min_size 时，合并到上一块，避免产生孤立短块
-        if chunks and current_size < min_size:
-            prev = chunks.pop()
-            merged_start = prev["start"]
-            merged_end = current[-1]["end"]
-            chunks.append(
-                {
-                    "chunk_id": prev["chunk_id"],
-                    "start": merged_start,
-                    "end": merged_end,
-                    "text": cleaned[merged_start:merged_end].strip(),
-                }
-            )
-        else:
-            flush()
-
-    if not chunks:
-        return [{"chunk_id": 0, "start": 0, "end": len(cleaned), "text": cleaned}]
-
-    # 合并操作可能导致 chunk_id 不连续，统一重新编号
-    for index, chunk in enumerate(chunks):
-        chunk["chunk_id"] = index
-    return chunks
+    grouped = []
+    for span in spans:
+        if grouped:
+            current = grouped[-1]
+            projected = span["end"] - current["start"]
+            current_size = current["end"] - current["start"]
+            if projected <= max_size and (projected <= target_size or current_size < min_size):
+                current["end"] = span["end"]
+                continue
+        grouped.append(dict(span))
+    if len(grouped) > 1 and grouped[-1]["end"] - grouped[-1]["start"] < min_size:
+        if grouped[-1]["end"] - grouped[-2]["start"] <= max_size:
+            tail = grouped.pop()
+            grouped[-1]["end"] = tail["end"]
+    return [
+        {"chunk_id": index, **span, "text": cleaned[span["start"]:span["end"]]}
+        for index, span in enumerate(grouped)
+    ]
 
 
 def detect_genre(text: str) -> str:

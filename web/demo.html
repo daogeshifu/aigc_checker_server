@@ -442,7 +442,7 @@
     <section class="hero">
       <span class="eyebrow"><i></i> 引擎在线 · 本地检测优先</span>
       <h1>看清每一次 AI 检测<br>是如何得出结论的</h1>
-      <p>粘贴文本，快速获得 AI 概率、置信度与执行路径。任务日志只记录模型路由和计算指标，不保存你的具体内容。</p>
+      <p>粘贴文本，快速获得 AI 风格风险分、置信度与执行路径。任务日志只记录模型路由和计算指标，不保存你的具体内容。</p>
     </section>
 
     <section class="workspace">
@@ -517,7 +517,7 @@
     <section class="result-card" id="resultCard" aria-live="polite">
       <div class="result-head">
         <div class="score-wrap">
-          <div class="score-ring" id="scoreRing"><div class="score-inner"><div><strong id="scoreValue">0%</strong><span>AI 概率</span></div></div></div>
+          <div class="score-ring" id="scoreRing"><div class="score-inner"><div><strong id="scoreValue">0</strong><span>AI 风格风险分</span></div></div></div>
           <div class="result-title"><h3 id="resultLabel">检测完成</h3><p id="resultDesc"></p><div class="result-task" id="resultTask"></div></div>
         </div>
         <span class="confidence-pill" id="confidencePill">置信度 --</span>
@@ -587,7 +587,7 @@
       chunk_id:'分块', chunk_language:'分块语言', burstiness:'句长波动', lexical_diversity:'词汇多样性', repeated_ngram_ratio:'重复率',
       route:'路由', reason:'原因', provider:'服务商', model:'模型', model_called:'调用模型', raw_ai_score:'模型原始分', raw_confidence:'模型置信度', label:'标签',
       judge_mode:'判别方式', qwen_score:'Qwen 分', feature_score:'特征分', style_score:'风格分', final_score:'最终分', confidence:'置信度', method:'聚合方法',
-      trigger:'触发复核', review_score:'复核分', review_confidence:'复核置信度', ai_probability:'AI 概率', ai_reduced_probability:'改写后概率',
+      trigger:'触发复核', review_score:'复核分', review_confidence:'复核置信度', ai_probability:'AI 风格风险分', ai_reduced_probability:'改写后风险分',
       rewrite:'发生改写', quality_score:'质量分', quality:'质量分', before:'改写前', after:'改写后', improvement:'下降幅度', applied:'已生效', stage:'步骤', target_model:'目标模型', steps:'流水线', reduced_chars:'改写字符数', error_type:'错误类型', fallback:'回退方式'
     };
     const valueLabels = {
@@ -681,20 +681,20 @@
       const score = Number(data.ai_probability || 0);
       const isReduce = Object.prototype.hasOwnProperty.call(data, 'ai_reduced_probability');
       const displayScore = isReduce ? Number(data.ai_reduced_probability || 0) : score;
-      const label = isReduce ? (data.rewrite ? '改写完成' : '保留原文') : (data.label || '检测完成');
+      const label = isReduce ? (data.rewrite ? '改写完成' : '保留原文') : (data.assessment_status === 'insufficient_evidence' ? '证据不足' : (data.label || '检测完成'));
       $('#scoreRing').style.setProperty('--score', Math.max(0, Math.min(100, displayScore)));
       $('#scoreRing').style.setProperty('--score-color', scoreColor(displayScore));
-      $('#scoreValue').textContent = `${displayScore.toFixed(1)}%`;
+      $('#scoreValue').textContent = `${displayScore.toFixed(1)}`;
       $('#resultLabel').textContent = label;
-      $('#resultDesc').textContent = isReduce ? `改写前 ${score.toFixed(1)}%，改写后 ${displayScore.toFixed(1)}%` : '已完成特征提取、分块判别与文档级聚合';
+      $('#resultDesc').textContent = isReduce ? `改写前 ${score.toFixed(1)} 分，改写后 ${displayScore.toFixed(1)} 分` : (data.assessment_status === 'insufficient_evidence' ? '当前信息不足以可靠判断来源；风险分仅供参考。' : '0–100 分反映 AI 风格倾向，尚未校准为来源概率。');
       $('#resultTask').textContent = data.task_id ? `Task ${data.task_id}` : '';
       $('#confidencePill').textContent = `置信度 ${data.confidence || (isReduce ? '—' : '—')}`;
       const metrics = isReduce
-        ? [['改写前', `${score.toFixed(2)}%`], ['改写后', `${displayScore.toFixed(2)}%`], ['下降幅度', `${Math.max(0, score-displayScore).toFixed(2)}%`], ['质量评分', Number(data.quality_score || 0).toFixed(1)]]
+        ? [['改写前', `${score.toFixed(2)} 分`], ['改写后', `${displayScore.toFixed(2)} 分`], ['下降幅度', `${Math.max(0, score-displayScore).toFixed(2)} 分`], ['质量评分', Number(data.quality_score || 0).toFixed(1)]]
         : [['文本分块', `${(data.chunks || []).length} 块`], ['判断标签', data.label || '—'], ['句长波动', data.metrics?.burstiness ?? '—'], ['远端复核', data.review?.used ? '已使用' : '未使用']];
       $('#metricsGrid').innerHTML = metrics.map(([key, value]) => `<div class="metric"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
       $('#reduceNote').hidden = !isReduce;
-      if (isReduce) $('#reduceNote').textContent = data.rewrite ? '已通过改写后复检，并通过效果回滚保护。' : '改写后 AI 概率未改善，系统已安全回滚并保留原文。';
+      if (isReduce) $('#reduceNote').textContent = data.rewrite ? '已通过改写后复检，并通过效果回滚保护。' : '改写后 AI 风格风险分未改善，系统已安全回滚并保留原文。';
       $('#outputPreview').hidden = !isReduce;
       $('#reducedText').textContent = isReduce ? (data.reduced || '') : '';
       $('#jsonOutput').textContent = JSON.stringify(data, null, 2);

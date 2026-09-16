@@ -170,7 +170,7 @@ async def _send_by_proxy(messages: list, model: str) -> str:
     }
     if httpx is not None:
         # httpx 异步方式，适合高并发场景
-        async with httpx.AsyncClient(timeout=None) as client:
+        async with httpx.AsyncClient(timeout=120) as client:
             response = await client.post(url, json=payload)
             response.raise_for_status()
             data = response.json()
@@ -565,42 +565,28 @@ def _rule_injection_step(original_text: str, current_text: str) -> dict:
 
 
 def _build_remote_review_prompt(content: str, detection_result: dict) -> str:
-    """构建 Pro 远端二审的用户 Prompt，包含文体、文档特征、前 4 个分块及原文。
-
-    结构化为 JSON 字符串，便于模型理解各字段含义并给出更准确的二审意见。
-    """
-    analysis = detection_result.get("analysis", {})
-    doc_features = detection_result.get("document_features", {})
-    # 只取前 4 个分块，避免 Prompt 过长
-    candidate_chunks = [
-        {
-            "chunk_id": chunk["chunk_id"],
-            "ai_score": chunk["ai_score"],
-            "label": chunk["label"],
-            "confidence": chunk["confidence"],
-            "text": chunk["text"],
-        }
-        for chunk in detection_result.get("chunks", [])[:4]
-    ]
-    payload = {
-        "genre": analysis.get("genre"),
-        "document_ai_probability": detection_result.get("ai_probability"),
-        "document_confidence": detection_result.get("confidence"),
-        "document_features": {
-            "char_count": doc_features.get("char_count"),
-            "sentence_count": doc_features.get("sentence_count"),
-            "avg_sentence_length": doc_features.get("avg_sentence_length"),
-            "sentence_length_std": doc_features.get("sentence_length_std"),
-            "burstiness": doc_features.get("burstiness"),
-            "lexical_diversity": doc_features.get("lexical_diversity"),
-            "repeated_ngram_ratio": doc_features.get("repeated_ngram_ratio"),
-            "connector_density": doc_features.get("connector_density"),
-            "detail_signal_count": doc_features.get("detail_signal_count"),
-        },
-        "chunks": candidate_chunks,
+    """Blind review with a high-risk chunk, a disputed chunk and representative spans."""
+    chunks = detection_result.get("chunks", [])
+    selected = []
+    if chunks:
+        candidates = [
+            max(chunks, key=lambda c: c["ai_score"]),
+            max(chunks, key=lambda c: abs(c.get("score_breakdown", {}).get("qwen_score", 0) - c.get("score_breakdown", {}).get("feature_score", 0))),
+            chunks[0], chunks[len(chunks) // 2], chunks[-1],
+        ]
+        seen = set()
+        for chunk in candidates:
+            if chunk["chunk_id"] not in seen:
+                selected.append({"chunk_id": chunk["chunk_id"], "text": chunk["text"]})
+                seen.add(chunk["chunk_id"])
+            if len(selected) == 4:
+                break
+    # Local scores are deliberately omitted to reduce anchoring.
+    return json.dumps({
+        "genre": detection_result.get("analysis", {}).get("genre"),
+        "representative_chunks": selected,
         "content": content,
-    }
-    return json.dumps(payload, ensure_ascii=False)
+    }, ensure_ascii=False)
 
 
 def _should_trigger_remote_review(result: dict, plan: str, can_remote_review: bool) -> tuple[bool, str]:
@@ -667,7 +653,7 @@ def _merge_review_result(result: dict, review_result: dict, review_meta: dict) -
     """将远端二审分数融合到本地检测结果中，更新 label、置信度和摘要原因。
 
     融合权重：本地置信度 low 时更信任二审（0.6 本地 + 0.4 二审），否则以本地为主（0.72 + 0.28）。
-    二审置信度 >= 0.75 时将结果置信度提升为 high；>= 0.45 且原为 low 时提升为 medium。
+    严重分歧或短文本保持 low；自报高置信度的二审最多将低置信度提升至 medium。
     """
     original_score = float(result["ai_probability"])
     review_score = float(review_result["ai_score"])
@@ -679,14 +665,33 @@ def _merge_review_result(result: dict, review_result: dict, review_meta: dict) -
     result["summary"]["confidence_label"] = result["label"]
     result["summary"]["percentages"] = _summary_percentages(blended)
     review_conf = review_result.get("confidence", 0.0)
-    if review_conf >= 0.75:
-        result["confidence"] = "high"
-    elif review_conf >= 0.45 and result["confidence"] == "low":
+    disagreement = abs(original_score - review_score)
+    warnings = list(result.get("warnings", []))
+    insufficient = result.get("document_features", {}).get("char_count", 0) < 120
+    if disagreement >= 35:
+        result["confidence"] = "low"
+        warnings.append("review_disagreement")
+        insufficient = True
+    elif review_conf >= 0.75 and not insufficient:
+        # A self-reported second opinion does not justify high confidence.
         result["confidence"] = "medium"
+    elif result.get("confidence") == "low":
+        insufficient = True
+    if insufficient:
+        result["confidence"] = "low"
+    result["score_label"] = _map_score_label(blended)
+    result["risk_score"] = round(blended, 2)
+    result["assessment_status"] = "insufficient_evidence" if result["confidence"] == "low" else "assessed"
+    result["label"] = "Insufficient Evidence" if result["confidence"] == "low" else result["score_label"]
+    result["summary"]["confidence_label"] = result["label"]
+    result["warnings"] = sorted(set(warnings))
     result["review"] = {
         **review_meta,
         "used": True,
         "result": review_result,
+        "local_risk_score": original_score,
+        "score_disagreement": round(disagreement, 2),
+        "scope": "document_only",
     }
     return result
 
@@ -992,6 +997,8 @@ async def run_check(
         input_chars=len(content),
     )
     cleaned = clean_text(content)
+    if not cleaned:
+        raise ValueError("Text is empty after normalization")
     _log_task(task_id, "scan.preprocess.clean", scan_phase=scan_phase, chars_before=len(content), chars_after=len(cleaned))
     language = detect_language(cleaned)
     _log_task(task_id, "scan.language.detect", scan_phase=scan_phase, language=language)
@@ -1020,8 +1027,7 @@ async def run_check(
     )
 
     # Step 2: 逐分块提取特征 + LLM 打分 + 规则综合评分
-    enriched_chunks: list[dict] = []
-    for chunk in chunks:
+    async def process_chunk(chunk: dict) -> dict:
         chunk_language = detect_language(chunk["text"]) if language == "mixed" else language
         features = extract_chunk_features(chunk["text"], language=chunk_language)
         _log_task(
@@ -1046,7 +1052,7 @@ async def run_check(
             task_id=task_id,
             chunk_id=chunk["chunk_id"],
         )
-        # 融合 LLM 分数（55%）、统计特征分（30%）、风格信号分（15%）
+        # Fuse independent text judgment (70%) and statistics (30%).
         scored = score_chunk(features, qwen_result, genre)
         _log_task(
             task_id,
@@ -1060,19 +1066,23 @@ async def run_check(
             final_score=scored.get("ai_score"),
             confidence=scored.get("confidence"),
         )
-        enriched_chunks.append(
-            {
-                **chunk,
-                **scored,
-                "features": features,
-                "signals": qwen_result.get("signals", {}),
-                "judge_label": qwen_result.get("label"),
-                "judge_mode": qwen_result.get("judge_mode", "qwen"),
-                "judge_skip_reason": qwen_result.get("judge_skip_reason"),
-                "perplexity_proxy": qwen_result.get("perplexity_proxy"),
-                "binoculars_score": qwen_result.get("binoculars_score"),
-            }
-        )
+        return {
+            **chunk,
+            **scored,
+            "features": features,
+            "signals": qwen_result.get("signals", {}),
+            "judge_label": qwen_result.get("label"),
+            "judge_mode": qwen_result.get("judge_mode", "qwen"),
+            "judge_skip_reason": qwen_result.get("judge_skip_reason"),
+            "perplexity_proxy": None,
+            "binoculars_score": None,
+        }
+
+    # Bound scheduled work per document; the shared Ollama gate also caps cross-request load.
+    parallelism = max(1, int(os.getenv("SCAN_CHUNK_CONCURRENCY", "1")))
+    enriched_chunks = []
+    for offset in range(0, len(chunks), parallelism):
+        enriched_chunks.extend(await asyncio.gather(*(process_chunk(c) for c in chunks[offset:offset + parallelism])))
 
     # Step 3: 将分块结果聚合为文档级结论
     result = aggregate_document(enriched_chunks, genre, doc_features)
@@ -1088,6 +1098,8 @@ async def run_check(
     )
     result["engine"] = {
         "checker": "hybrid-local",
+        "version": "2.0.0",
+        "score_semantics": "uncalibrated_risk_score",
         "requested_api_source": requested_api_source,
         "requested_model": model,
         "scan_api_source": SCAN_API_SOURCE,
@@ -1097,7 +1109,7 @@ async def run_check(
     # Step 4: 判断是否需要触发 Pro 远端二审，并在结果中记录二审元数据
     should_review, review_reason = _should_trigger_remote_review(result, plan=plan, can_remote_review=can_remote_review)
     review_meta = {
-        "enabled": plan == "pro" and can_remote_review,
+        "enabled": REMOTE_REVIEW_ENABLED and plan == "pro" and can_remote_review,
         "used": False,
         "provider": PRO_REVIEW_SOURCE if plan == "pro" and can_remote_review else None,
         "model": _review_model_for(PRO_REVIEW_SOURCE) if plan == "pro" and can_remote_review else None,
@@ -1221,6 +1233,10 @@ async def run_reduce(
         "rewrite": rewrite_succeeded,
         "ai_probability": f"{before:.2f}",
         "ai_reduced_probability": f"{after:.2f}",
+        "score_semantics": "uncalibrated_risk_score",
+        "calibrated": False,
+        "detection_status_before": original_result.get("assessment_status"),
+        "detection_status_after": (reduced_result if rewrite_succeeded else original_result).get("assessment_status"),
         "quality_score": quality,
         "model": rewrite_result.get("model", "moderate"),
         "changes": rewrite_result.get("changes", []),

@@ -20,8 +20,32 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://218.4.33.190:26316")
 OLLAMA_DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
 OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "120"))
 OLLAMA_JSON_NUM_CTX = int(os.getenv("OLLAMA_JSON_NUM_CTX", "1536"))
-OLLAMA_JSON_NUM_PREDICT = int(os.getenv("OLLAMA_JSON_NUM_PREDICT", "96"))
+OLLAMA_JSON_NUM_PREDICT = max(256, int(os.getenv("OLLAMA_JSON_NUM_PREDICT", "256")))
+OLLAMA_MAX_CONCURRENCY = max(1, int(os.getenv("OLLAMA_MAX_CONCURRENCY", "1")))
 OLLAMA_DISABLE_THINKING = os.getenv("OLLAMA_DISABLE_THINKING", "true").lower() not in {"false", "0", "no"}
+
+
+_http_client = None
+_request_gate = None
+
+
+async def start_ollama_client() -> None:
+    """Called once by the application lifespan; connections and capacity are shared."""
+    global _http_client, _request_gate
+    _request_gate = asyncio.Semaphore(OLLAMA_MAX_CONCURRENCY)
+    if httpx is not None:
+        _http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(OLLAMA_TIMEOUT, connect=10.0),
+            limits=httpx.Limits(max_connections=OLLAMA_MAX_CONCURRENCY, max_keepalive_connections=OLLAMA_MAX_CONCURRENCY),
+        )
+
+
+async def close_ollama_client() -> None:
+    global _http_client, _request_gate
+    if _http_client is not None:
+        await _http_client.aclose()
+    _http_client = None
+    _request_gate = None
 
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -65,7 +89,19 @@ def _summarize_empty_response(data: dict[str, Any]) -> str:
     )
 
 
+class TruncatedResponseError(RuntimeError):
+    pass
+
+
 async def _post_generate(payload: dict) -> str:
+    # The shared gate limits all requests, including concurrent scan requests.
+    if _request_gate is not None:
+        async with _request_gate:
+            return await _post_generate_unlimited(payload)
+    return await _post_generate_unlimited(payload)
+
+
+async def _post_generate_unlimited(payload: dict) -> str:
     """向 Ollama /api/generate 发送请求，返回响应文本。
 
     优先使用 httpx 异步客户端（推荐）；若未安装则通过线程池调用 urllib 同步版本。
@@ -75,14 +111,19 @@ async def _post_generate(payload: dict) -> str:
     if httpx is not None:
         # connect 超时独立设置为 10s，避免网络问题长时间阻塞
         timeout = httpx.Timeout(OLLAMA_TIMEOUT, connect=10.0)
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(url, json=payload)
-            response.raise_for_status()
-            data = response.json()
+        if _http_client is not None:
+            response = await _http_client.post(url, json=payload)
+        else:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(url, json=payload)
+        response.raise_for_status()
+        data = response.json()
     else:
         # httpx 未安装时降级为 urllib，需通过线程池避免阻塞事件循环
         data = await asyncio.to_thread(_post_generate_via_urllib, url, payload)
 
+    if data.get("done_reason") == "length" and payload.get("format"):
+        raise TruncatedResponseError("Ollama JSON output reached its token limit")
     result = _extract_generate_text(data)
     if result:
         return result
@@ -111,7 +152,7 @@ async def generate_json(
 ) -> dict:
     """调用 Ollama 生成结构化 JSON 响应，通过 format 字段传入 JSON Schema 约束输出格式。
 
-    temperature 设为 0.1 以确保输出尽可能确定（适合评分场景）。
+    temperature 设为 0.0 以确保输出尽可能确定（适合评分场景）。
     异常时重新抛出 RuntimeError，由调用方决定是否降级为启发式方法。
     """
     actual_model = model or OLLAMA_DEFAULT_MODEL
@@ -151,6 +192,10 @@ async def generate_json(
         fallback_payload = {
             **payload,
             "format": "json",
+            "options": {
+                **merged_options,
+                "num_predict": max(512, merged_options["num_predict"] * 2) if isinstance(exc, TruncatedResponseError) else merged_options["num_predict"],
+            },
         }
         try:
             raw = await _post_generate(fallback_payload)
