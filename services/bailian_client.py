@@ -7,13 +7,15 @@ import os
 
 import httpx
 
+from services.concurrency import bounded_concurrency
+
 
 BAILIAN_BASE_URL = os.getenv("BAILIAN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1").rstrip("/")
 BAILIAN_API_KEY = os.getenv("BAILIAN_API_KEY", "")
 BAILIAN_MODEL = os.getenv("BAILIAN_MODEL", "qwen-plus")
 BAILIAN_REWRITE_MODEL = os.getenv("BAILIAN_REWRITE_MODEL", BAILIAN_MODEL)
 BAILIAN_TIMEOUT = float(os.getenv("BAILIAN_TIMEOUT", "120"))
-BAILIAN_MAX_CONCURRENCY = max(1, int(os.getenv("BAILIAN_MAX_CONCURRENCY", "2")))
+BAILIAN_MAX_CONCURRENCY = bounded_concurrency(os.getenv("BAILIAN_MAX_CONCURRENCY"))
 BAILIAN_JSON_MAX_TOKENS = max(256, int(os.getenv("BAILIAN_JSON_MAX_TOKENS", "512")))
 _http_client = None
 _request_gate = None

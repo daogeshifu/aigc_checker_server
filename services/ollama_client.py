@@ -8,6 +8,8 @@ import re
 import urllib.request
 from typing import Any
 
+from services.concurrency import bounded_concurrency
+
 try:
     import httpx
 except ImportError:  # pragma: no cover - fallback for minimal local env
@@ -21,7 +23,7 @@ OLLAMA_DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
 OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "120"))
 OLLAMA_JSON_NUM_CTX = int(os.getenv("OLLAMA_JSON_NUM_CTX", "1536"))
 OLLAMA_JSON_NUM_PREDICT = max(256, int(os.getenv("OLLAMA_JSON_NUM_PREDICT", "256")))
-OLLAMA_MAX_CONCURRENCY = max(1, int(os.getenv("OLLAMA_MAX_CONCURRENCY", "1")))
+OLLAMA_MAX_CONCURRENCY = bounded_concurrency(os.getenv("OLLAMA_MAX_CONCURRENCY"))
 OLLAMA_DISABLE_THINKING = os.getenv("OLLAMA_DISABLE_THINKING", "true").lower() not in {"false", "0", "no"}
 OLLAMA_NUM_THREAD = int(os.getenv("OLLAMA_NUM_THREAD", "0"))
 

@@ -14,6 +14,7 @@ import tempfile
 import time
 
 from scripts.prepare_cpu import MODEL_FILE, download_model
+from services.concurrency import bounded_concurrency
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -195,7 +196,8 @@ def sync_app_env(root, config, limits):
     original = path.read_text(encoding="utf-8")
     existing = read_values(path, {"OLLAMA_TIMEOUT", "PROBABILITY_TIMEOUT", "OLLAMA_JSON_NUM_CTX",
                                   "OLLAMA_JSON_NUM_PREDICT", "AZURE_DEPLOYMENT", "AZURE_REVIEW_DEPLOYMENT",
-                                  "PRO_REVIEW_SOURCE", "PRO_REVIEW_MODEL", "AZURE_API_MODE", "AZURE_OPENAI_DEPLOYMENT"})
+                                  "PRO_REVIEW_SOURCE", "PRO_REVIEW_MODEL", "AZURE_API_MODE", "AZURE_OPENAI_DEPLOYMENT",
+                                  "SCAN_CHUNK_CONCURRENCY", "OLLAMA_MAX_CONCURRENCY", "BAILIAN_MAX_CONCURRENCY"})
     review_model = existing.get("AZURE_REVIEW_DEPLOYMENT") or (
         existing.get("PRO_REVIEW_MODEL") if existing.get("PRO_REVIEW_SOURCE", "azure") == "azure" else None
     ) or existing.get("AZURE_OPENAI_DEPLOYMENT") or existing.get("AZURE_DEPLOYMENT") or "gpt-4o"
@@ -205,7 +207,9 @@ def sync_app_env(root, config, limits):
         "PRO_REVIEW_SOURCE": "azure", "AZURE_REVIEW_DEPLOYMENT": review_model, "PRO_REVIEW_MODEL": review_model,
         "AZURE_API_MODE": existing.get("AZURE_API_MODE") or "v1",
         "OLLAMA_DOCKER_NETWORK": NETWORK,
-        "SCAN_CHUNK_CONCURRENCY": "1", "PROBABILITY_ENABLED": str(limits["enabled"]).lower(),
+        **{key: str(bounded_concurrency(existing.get(key))) for key in (
+            "SCAN_CHUNK_CONCURRENCY", "OLLAMA_MAX_CONCURRENCY", "BAILIAN_MAX_CONCURRENCY")},
+        "PROBABILITY_ENABLED": str(limits["enabled"]).lower(),
         "PROBABILITY_BASE_URL": "http://aigc-cpu-scorer:8091",
         "OLLAMA_TIMEOUT": existing.get("OLLAMA_TIMEOUT") or "600",
         "PROBABILITY_TIMEOUT": existing.get("PROBABILITY_TIMEOUT") or "600",
@@ -216,7 +220,7 @@ def sync_app_env(root, config, limits):
         overrides.update({"OLLAMA_BASE_URL": "http://aigc-ollama:11434",
                           "OLLAMA_MODEL": config["OLLAMA_DEPLOY_MODEL"],
                           "OLLAMA_REWRITE_MODEL": config["OLLAMA_DEPLOY_MODEL"],
-                          "OLLAMA_NUM_THREAD": str(limits["ollama_cpu"]), "OLLAMA_MAX_CONCURRENCY": "1"})
+                          "OLLAMA_NUM_THREAD": str(limits["ollama_cpu"])})
     lines, seen = [], set()
     for line in original.splitlines():
         key = line.partition("=")[0].strip().removeprefix("export ").strip()

@@ -45,3 +45,10 @@ test('historical insufficient evidence and fallback warnings remain visible', ()
   assert.match(html, /模型失败后统计回退/);
   assert.match(html, /attention/);
 });
+
+test('chunking milestone shows dynamic parallelism and its ceiling', () => {
+  const html = view.timeline([{step:'scan.chunking.finish', status:'success', details:{chunks:23, parallelism:10, concurrency_limit:10}}]);
+  assert.match(html, /chunks · 23/);
+  assert.match(html, /parallelism · 10/);
+  assert.match(html, /concurrency_limit · 10/);
+});

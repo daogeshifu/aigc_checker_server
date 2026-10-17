@@ -15,11 +15,12 @@ except ImportError:  # pragma: no cover - fallback for minimal local env
     httpx = None
 
 from services.aggregate import aggregate_document, score_chunk
+from services.concurrency import bounded_concurrency
 from services.azure_client import create_azure_client, request_options as azure_request_options
 from services.features import extract_chunk_features, extract_document_features
 from services.judges import judge_chunk_with_qwen
 from services.ollama_client import OLLAMA_DEFAULT_MODEL
-from services.model_client import DETECTION_PROVIDER, default_model, rewrite_model, generate_text
+from services.model_client import DETECTION_PROVIDER, default_model, rewrite_model, generate_text, request_concurrency_limit
 from services.preprocess import chunk_text, clean_text, detect_genre, detect_language
 from services.probability_client import measure_probability
 from services.prompts import (
@@ -993,6 +994,8 @@ async def run_check(
         repeated_ngram_ratio=doc_features.get("repeated_ngram_ratio"),
     )
     chunks = chunk_text(cleaned)
+    concurrency_limit = min(bounded_concurrency(os.getenv("SCAN_CHUNK_CONCURRENCY")), request_concurrency_limit())
+    parallelism = min(len(chunks), concurrency_limit)
     _log_task(
         task_id,
         "scan.chunking.finish",
@@ -1001,6 +1004,8 @@ async def run_check(
         target_chars=320,
         min_chars=180,
         chunks=len(chunks),
+        parallelism=parallelism,
+        concurrency_limit=concurrency_limit,
     )
 
     # Step 2: 逐分块提取特征 + LLM 打分 + 规则综合评分
@@ -1056,11 +1061,24 @@ async def run_check(
             "binoculars_score": None,
         }
 
-    # Bound scheduled work per document; the shared Ollama gate also caps cross-request load.
-    parallelism = max(1, int(os.getenv("SCAN_CHUNK_CONCURRENCY", "1")))
-    enriched_chunks = []
-    for offset in range(0, len(chunks), parallelism):
-        enriched_chunks.extend(await asyncio.gather(*(process_chunk(c) for c in chunks[offset:offset + parallelism])))
+    # Workers take the next chunk immediately; a slow chunk never holds up a whole batch.
+    # Indexed writes preserve source order regardless of model response order.
+    enriched_chunks = [{} for _ in chunks]
+    pending_chunks = iter(enumerate(chunks))
+
+    async def chunk_worker() -> None:
+        for index, chunk in pending_chunks:
+            enriched_chunks[index] = await process_chunk(chunk)
+
+    workers = [asyncio.create_task(chunk_worker()) for _ in range(parallelism)]
+    try:
+        await asyncio.gather(*workers)
+    except BaseException:
+        # Drain all workers before reporting detection failure or cancellation.
+        for worker in workers:
+            worker.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
+        raise
 
     # Step 3: 将分块结果聚合为文档级结论
     result = aggregate_document(enriched_chunks, genre, doc_features)

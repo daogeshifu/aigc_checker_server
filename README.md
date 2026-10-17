@@ -583,7 +583,9 @@ curl --fail http://127.0.0.1:8027/health
 - 推荐使用 `segments`，`sentences` 作为兼容别名保留；二者 `granularity` 均为 `chunk`。`summary.percentages` 只作历史展示权重，不代表实际内容组成比例。`vocab` 只说明重复，不能作为来源证据。
 - `warnings` 记录规则降级、短文本和检测分歧。全文置信度按块长度加权；规则结果不因互相一致而提升置信度。
 - 远端复核不读取本地数值分数，选择高风险、分歧和代表片段并提供全文；严重分歧时标记证据不足。远端只更新文档结论，分块分数仍是本地结果（`review.scope: "document_only"`）。
-- FastAPI lifespan 复用 Ollama HTTP 连接，并用 `OLLAMA_MAX_CONCURRENCY` 限制进程内模型请求；`SCAN_CHUNK_CONCURRENCY` 限制每篇文档并发任务。默认均为 1，部署多 worker 时每个进程各有额度。只有完成 GPU 压测后再增大。
+- 分块完成后使用异步工作队列，默认并发数为 `min(分块数, 10)`：3 块并发 3 路，10 块并发 10 路，超过 10 块时一块完成就立即补位，结果按原文顺序聚合。日志显示「分块数 / 并发块数 / 并发上限」。
+- `SCAN_CHUNK_CONCURRENCY` 为每篇文档的上限；`OLLAMA_MAX_CONCURRENCY` / `BAILIAN_MAX_CONCURRENCY` 为模型客户端跨任务共享的请求上限，默认均为 10，硬上限为 10；显式配置 1～9 时按较低值执行。多 API worker 各有独立额度。旧 `.env` 中的 1/2 不会自动提高，启用本次并行需将这三个参数改为 10，再执行 `sudo bash manage.sh update api`。
+- Ollama 服务端的推理并行数独立于上述应用参数：已有 CPU 模型容器配置为 `OLLAMA_NUM_PARALLEL=1` 时仍会在模型端排队。需要在实际运行 Ollama 的服务器配置其并行能力并验证吞吐；仅更新 API 不会重建远端模型服务。
 - JSON 输出最少 256 tokens，兼容旧 `.env` 的 96 配置；检测到 `done_reason=length` 后增大预算重试一次。此改动需要重启服务生效。
 
 ### 回归验证

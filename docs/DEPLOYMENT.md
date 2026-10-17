@@ -34,7 +34,7 @@ BAILIAN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 BAILIAN_MODEL=qwen-plus
 BAILIAN_REWRITE_MODEL=qwen-plus
 BAILIAN_TIMEOUT=120
-BAILIAN_MAX_CONCURRENCY=2
+BAILIAN_MAX_CONCURRENCY=10
 BAILIAN_JSON_MAX_TOKENS=512
 
 # 继续使用已有 Azure key、endpoint、API version；这里填实际 deployment name。
@@ -112,11 +112,15 @@ OLLAMA_DOCKER_NETWORK=aigc-models
 OLLAMA_MODEL=qwen3:4b
 OLLAMA_REWRITE_MODEL=qwen3:4b
 OLLAMA_NUM_THREAD=2
-OLLAMA_MAX_CONCURRENCY=1
-SCAN_CHUNK_CONCURRENCY=1
+OLLAMA_MAX_CONCURRENCY=10
+SCAN_CHUNK_CONCURRENCY=10
 PROBABILITY_ENABLED=true
 PROBABILITY_BASE_URL=http://aigc-cpu-scorer:8091
 ```
+
+分块调度默认并发 `min(分块数, 10)`，完成一块立即补下一块；`SCAN_CHUNK_CONCURRENCY`、`OLLAMA_MAX_CONCURRENCY`、`BAILIAN_MAX_CONCURRENCY` 默认 10，配置大于 10 会收敛为 10。已有较低值继续保留，部署入口不会将并发强制写回 1。旧部署若使用 1/2，先在 `.env` 将上述三个参数改为 10，再执行 `sudo bash manage.sh update api`。分块日志显示实际选择的并发块数，受主检测客户端共享容量限制。
+
+Ollama 引擎的 `OLLAMA_NUM_PARALLEL` 属于模型服务端配置；现有 CPU 部署默认 1，应用并发请求仍可能在模型端排队。提高实际推理并行需要在 Ollama 所在服务器修改引擎配置并重新创建/重启对应服务；API 更新不会修改远端 Ollama，也不会改变已有模型容器的环境变量。使用百炼时无需调整 Ollama。
 
 模型名和线程数来自部署配置。现有 `OLLAMA_TIMEOUT`、`PROBABILITY_TIMEOUT`、JSON 上下文/输出长度保留，缺失时补默认值；CPU 请求建议在 `.env` 将两个超时设置为 `600`。API 密钥、套餐 Token、字数限制和远程复核开关均保留。每次配置变化前保存权限为 0600 的 `.env.backup.*`，不要上传这些备份。
 

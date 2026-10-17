@@ -71,6 +71,25 @@ class StackManagementTests(unittest.TestCase):
         self.assertEqual(content.count('PROBABILITY_ENABLED='), 1)
         self.assertIn('PRO_API_TOKENS=fixture-pro-a,fixture-pro-b', content)
 
+    def test_missing_concurrency_settings_default_to_ten(self):
+        manage.sync_app_env(self.root, self.config, self.limits)
+        values = manage.read_values(self.root / '.env', {
+            'SCAN_CHUNK_CONCURRENCY', 'OLLAMA_MAX_CONCURRENCY', 'BAILIAN_MAX_CONCURRENCY'})
+        self.assertEqual(set(values.values()), {'10'})
+        self.assertEqual(len(values), 3)
+
+    def test_update_preserves_lower_concurrency_and_caps_excess_capacity(self):
+        with (self.root / '.env').open('a') as stream:
+            stream.write('SCAN_CHUNK_CONCURRENCY=10\nOLLAMA_MAX_CONCURRENCY=3\nBAILIAN_MAX_CONCURRENCY=99\n')
+        for provider in ('ollama', 'bailian'):
+            with self.subTest(provider=provider):
+                config = {**self.config, 'DETECTION_PROVIDER': provider}
+                limits = manage.resources(config, 4, 16 * manage.GIB)
+                manage.sync_app_env(self.root, config, limits)
+                values = manage.read_values(self.root / '.env', {
+                    'SCAN_CHUNK_CONCURRENCY', 'OLLAMA_MAX_CONCURRENCY', 'BAILIAN_MAX_CONCURRENCY'})
+                self.assertEqual(values, {'SCAN_CHUNK_CONCURRENCY': '10', 'OLLAMA_MAX_CONCURRENCY': '3', 'BAILIAN_MAX_CONCURRENCY': '10'})
+
     def test_existing_model_and_deployment_config_are_reused(self):
         (self.root / 'deploy.env').unlink()
         (self.root / '.env').write_text('OLLAMA_MODEL="existing-model:4b"\n')

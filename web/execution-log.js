@@ -14,7 +14,7 @@ window.createTaskLogView = ({ eventLabels, detailLabels, valueLabels }) => {
     'rewrite.pipeline.start', 'rewrite.step.finish', 'rewrite.step.skip', 'reduce.start', 'reduce.quality.calculate',
     'provider.azure.call', 'provider.azure.success', 'provider.openrouter.call', 'provider.openrouter.proxy_call', 'provider.openrouter.success',
     'reduce.finish', 'api.scan.return', 'api.reduce.return']);
-  const coreKeys = new Set(['scan_phase', 'chars_after', 'chunks', 'scan_source', 'scan_model', 'provider', 'model',
+  const coreKeys = new Set(['scan_phase', 'chars_after', 'chunks', 'parallelism', 'concurrency_limit', 'scan_source', 'scan_model', 'provider', 'model',
     'deployment', 'stage', 'reason', 'error_type', 'fallback', 'label', 'ai_probability', 'ai_reduced_probability',
     'confidence', 'final_score', 'rewrite', 'quality_score', 'before', 'after', 'status', 'perplexity']);
 

@@ -18,6 +18,11 @@ def rewrite_model():
             else os.getenv("OLLAMA_REWRITE_MODEL", ollama_client.OLLAMA_DEFAULT_MODEL))
 
 
+def request_concurrency_limit() -> int:
+    return (bailian_client.BAILIAN_MAX_CONCURRENCY if DETECTION_PROVIDER == "bailian"
+            else ollama_client.OLLAMA_MAX_CONCURRENCY)
+
+
 async def start_model_client():
     if DETECTION_PROVIDER == "bailian":
         bailian_client.validate_config()
