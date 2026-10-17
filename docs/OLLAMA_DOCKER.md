@@ -78,6 +78,10 @@ sudo docker logs --tail 80 aigc-ollama
 
 ## 3. 接入原项目的 .env
 
+检测 API 与 Ollama 都是 Docker 容器时，通信路径为 `aigc-checker-server → aigc-models 共享网络 → aigc-ollama:11434`。宿主机上 `curl 127.0.0.1:11434` 成功，只能证明宿主机能够访问 Ollama，不能证明 API 容器已经连通。`OLLAMA_DOCKER_NETWORK` 由更新后的 `disploy.sh` 读取；仅填写 `.env` 本身不会创建网络或连接容器。
+
+可直接参考 [4 核 / 16GiB 完整配置模板](ubuntu-4c16g.env.example)，将其中全部 `REPLACE_WITH_*` 替换为有效 Token / 密钥后使用。
+
 如果检测项目也运行在 Docker 中，编辑原来的 `.env`，修改或添加以下项。原有 Azure / OpenRouter / Token 配置保留：
 
 ```dotenv
@@ -115,8 +119,10 @@ sudo env SKIP_GIT_PULL=1 bash disploy.sh
 
 ```bash
 sudo docker exec aigc-checker-server python -c \
-  'import json,urllib.request; data=json.load(urllib.request.urlopen("http://aigc-ollama:11434/api/tags",timeout=10)); print([m["name"] for m in data["models"]])'
+  'import os,json,urllib.request; base=os.environ["OLLAMA_BASE_URL"].rstrip("/"); print("实际模型地址:",base); data=json.load(urllib.request.urlopen(base+"/api/tags",timeout=10)); print([m["name"] for m in data["models"]])'
 ```
+
+应先输出 `http://aigc-ollama:11434`，再输出含 `qwen3:4b` 的模型列表。若仍输出原远端地址，说明运行中的 API 容器还没有重新加载更新后的环境变量；单独 `docker restart` 不会刷新通过 `env_file` 注入的配置，需要按上述流程重建 API 容器。
 
 随后调用原来的 `/api/scan` 或测试页面，确认实际结果的 `engine.qwen_model` 是 `qwen3:4b`，正常判别分块的 `judge_mode` 是 `qwen`。短文本会按现有规则跳过模型，验证时使用超过 200 字且有多句的自然文本。`heuristic_fallback` 说明模型调用或输出格式失败；继续检查日志，不要把回退当作模型成功。
 
