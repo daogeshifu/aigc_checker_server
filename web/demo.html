@@ -374,7 +374,7 @@
       models: { ollama: '__OLLAMA_DEFAULT_MODEL__', azure: '__AZURE_DEFAULT_MODEL__', openrouter: '__OPENROUTER_DEFAULT_MODEL__' }
     };
 
-    const state = { view: CONFIG.initialView, mode: 'scan', loading: false, tasks: [] };
+    const state = { view: CONFIG.initialView, mode: 'scan', loading: false, tasks: [], tokenValue: null };
     const $ = (selector) => document.querySelector(selector);
     const $$ = (selector) => [...document.querySelectorAll(selector)];
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
@@ -431,11 +431,42 @@
       clearTimeout(showToast.timer); showToast.timer = setTimeout(() => node.className = 'toast', 2600);
     }
 
-    function updateTokenStatus() {
-      const hasToken = Boolean(token());
+    function setTokenEditor(open) {
+      $('#tokenEditor').hidden = !open;
+      $('#editTokenBtn').setAttribute('aria-expanded', String(open));
+      $('#apiToken').type = 'password';
+      $('#eyeBtn').setAttribute('aria-label', '显示 Token');
+      $('#eyeBtn').setAttribute('aria-pressed', 'false');
+    }
+
+    function updateTokenStatus(value = token()) {
+      const hasToken = Boolean(value);
+      const changed = value !== state.tokenValue;
+      state.tokenValue = value;
       $('#tokenStatus').classList.toggle('ready', hasToken);
       $('#tokenStatus span').textContent = hasToken ? '已填写' : '等待输入';
-      sessionStorage.setItem('aigc_demo_token', token());
+      $('#clearTokenBtn').hidden = !hasToken;
+      $('#tokenHint').textContent = window.demoTokenStore.persistent
+        ? '仅在此浏览器记住 Token，今天内无需重复输入，次日自动清除。'
+        : '浏览器未允许本地保存，Token 仅在当前页面有效，刷新后需重新输入。';
+      // Focus notifications with an unchanged saved token must not discard an edit.
+      if (changed) {
+        $('#apiToken').value = value;
+        setTokenEditor(!hasToken);
+      }
+    }
+
+    function saveToken() {
+      const value = $('#apiToken').value.trim();
+      if (!value) {
+        showToast('请输入访问 Token', 'error');
+        $('#apiToken').focus();
+        return;
+      }
+      window.demoTokenStore.save(value);
+      $('#apiToken').value = value;
+      setTokenEditor(false);
+      showToast(window.demoTokenStore.persistent ? 'Token 已保存，今天内有效' : 'Token 已保存到当前页面');
     }
 
     function switchView(view) {
@@ -582,17 +613,35 @@
     function closeModal() { $('#detailModal').classList.remove('open'); }
 
     window.addEventListener('DOMContentLoaded', () => {
-      $('#apiToken').value = sessionStorage.getItem('aigc_demo_token') || '';
+      window.demoTokenStore.subscribe(updateTokenStatus);
       $('#apiSource').value = CONFIG.apiSource;
       $('#modelInput').value = CONFIG.models[CONFIG.apiSource] || CONFIG.models.ollama;
       updateTokenStatus(); updateCount(); switchView(CONFIG.initialView); switchMode('scan'); renderRouteHint();
       $$('.view-tab').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.viewTarget)));
       $$('.mode-card').forEach(card => card.addEventListener('click', () => switchMode(card.dataset.mode)));
       $$('.sample-btn').forEach(btn => btn.addEventListener('click', () => { $('#inputText').value = samples[btn.dataset.sample]; updateCount(); $('#inputText').focus(); }));
-      $('#apiToken').addEventListener('input', updateTokenStatus);
+      $('#saveTokenBtn').addEventListener('click', saveToken);
+      $('#apiToken').addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); saveToken(); }
+      });
+      $('#editTokenBtn').addEventListener('click', () => {
+        setTokenEditor(true);
+        $('#apiToken').focus();
+        $('#apiToken').select();
+      });
+      $('#clearTokenBtn').addEventListener('click', () => {
+        window.demoTokenStore.clear();
+        $('#apiToken').focus();
+        showToast('Token 已清除');
+      });
       $('#inputText').addEventListener('input', updateCount);
       $('#apiSource').addEventListener('change', () => { $('#modelInput').value = CONFIG.models[$('#apiSource').value] || ''; renderRouteHint(); });
-      $('#eyeBtn').addEventListener('click', () => { $('#apiToken').type = $('#apiToken').type === 'password' ? 'text' : 'password'; });
+      $('#eyeBtn').addEventListener('click', () => {
+        const visible = $('#apiToken').type === 'password';
+        $('#apiToken').type = visible ? 'text' : 'password';
+        $('#eyeBtn').setAttribute('aria-label', visible ? '隐藏 Token' : '显示 Token');
+        $('#eyeBtn').setAttribute('aria-pressed', String(visible));
+      });
       $('#runBtn').addEventListener('click', runTask);
       $('#copyBtn').addEventListener('click', async () => {
         try { await navigator.clipboard.writeText($('#reducedText').textContent); showToast('改写结果已复制'); }
