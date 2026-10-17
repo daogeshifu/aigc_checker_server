@@ -159,6 +159,10 @@ SCORER_ENABLED=false
 
 ## 旧入口与验证范围
 
+如果构建评分镜像报 `Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE)`，说明镜像缺少 `pkg-config` 编译依赖。更新 `cpu_scoring/Dockerfile` 中的 apt 安装列表，确保包含 `build-essential cmake pkg-config libopenblas-dev`，然后重新执行 `sudo bash manage.sh up`。在宿主机安装 pkg-config 不会补齐 Docker 镜像内部的依赖。修改 Dockerfile 后会自动失效对应构建缓存，无需清理模型、容器或全部镜像。
+
+日志里的 Git/ccache 缺失是警告；本次实际失败原因是 PkgConfig。构建发生在替换容器之前，此阶段失败不会停止当前运行中的服务。
+
 `disploy.sh` 仍可单独管理 API，`scripts/deploy_ollama.sh` 仍可单独准备 Ollama。新的统一入口复用它们，业务 Compose 只重建 API，不清除同项目中的其他服务。
 
 `compose.cpu.yaml` / `scripts/deploy_cpu.sh` 是旧的 8 核 / 32GB 独立整套方案，使用 `.env.cpu` 和另一组容器。当前 4 核机器请使用本文入口，勿混合启动两套。

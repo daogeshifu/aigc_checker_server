@@ -5,7 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     CMAKE_BUILD_PARALLEL_LEVEL=${BUILD_JOBS} OPENBLAS_NUM_THREADS=4 OMP_NUM_THREADS=4
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake libopenblas-dev && rm -rf /var/lib/apt/lists/*
+    build-essential cmake pkg-config libopenblas-dev && rm -rf /var/lib/apt/lists/*
 COPY cpu_scoring/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY cpu_scoring ./cpu_scoring
