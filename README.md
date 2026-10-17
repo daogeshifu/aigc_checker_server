@@ -1,5 +1,58 @@
 # AIGC Checker Server
 
+## 启动与更新：先看这里
+
+**服务器统一使用 `manage.sh` 管理。首次部署用 `up`，只改配置用 `reload api`，只改业务代码用 `update api`。** 需要 Docker 和 Python 3.10+，以下命令均在服务器项目目录执行。
+
+### 1. 首次启动
+
+上传或拉取最新代码后，准备配置；已有配置会保留：
+
+```bash
+cd /home/html/aigc_checker_server
+test -f .env || cp .env.example .env
+test -f deploy.env || cp deploy.env.example deploy.env
+```
+
+先编辑 `.env`，填写访问 Token、模型提供方和对应密钥：`DETECTION_PROVIDER=bailian` 使用百炼，`ollama` 使用本地 Ollama。Azure 复核使用 `.env` 中的 Azure 配置；是否启用独立 PPL 服务由 `deploy.env` 的 `SCORER_ENABLED=true/false` 决定。
+
+配置完成后启动：
+
+```bash
+sudo bash manage.sh up
+sudo bash manage.sh status
+sudo bash manage.sh check
+```
+
+启用评分服务时，可再执行 `sudo bash manage.sh check --score` 验证实际 PPL 测量。首次需要构建镜像，缺少评分模型时还会下载模型；已有模型会校验并复用。启动后访问：`http://服务器IP:8027/demo`，接口文档：`http://服务器IP:8027/docs`。
+
+### 2. 日常更新：按修改内容选择
+
+| 修改内容或操作 | 命令 | 执行范围 |
+|---|---|---|
+| 修改 `.env` 中的 Token、密钥、远程模型部署名等 | `sudo bash manage.sh reload api` | 不构建镜像，只重建业务容器加载配置 |
+| 修改 Python / HTML / JS 业务代码 | `sudo bash manage.sh update api` | 只构建并更新业务镜像，复用依赖缓存；不重启评分模型 |
+| 业务容器需要重启，配置和代码均未变化 | `sudo bash manage.sh restart api` | 仅重启现有容器，不重新读取 `.env` |
+| 首次部署、切换 Ollama/百炼、修改模型容器资源或恢复整套服务 | `sudo bash manage.sh up` | 完整部署所需服务，会执行镜像构建并加载评分模型 |
+| 更新评分服务代码或编译依赖 | `sudo bash manage.sh update scorer` | 只构建并更新评分容器 |
+
+**日常配置或业务代码更新不必每次执行完整 `up`。** `reload api` 需要已有业务镜像和所需模型服务正常运行，也不能部署源码变化。模型服务尚未启动或刚开启评分开关时，先执行 `up`。
+
+管理入口不会自动拉取代码：Git 用户先 `git pull --ff-only`，上传更新包的用户先解压，再选择上表中的更新命令。
+
+### 3. 状态、日志与停止
+
+```bash
+sudo bash manage.sh status          # 查看服务状态
+sudo bash manage.sh logs api        # 业务日志
+sudo bash manage.sh logs scorer -f  # 持续查看评分日志
+sudo bash manage.sh stop            # 停止服务，保留模型与数据
+```
+
+容器数量：Ollama + 评分模式运行三个容器；百炼 + 评分模式运行两个容器。关闭评分服务后各减少一个。完整说明见 [统一 Docker 管理入口](docs/DEPLOYMENT.md)。
+
+---
+
 面向生产场景的 AI 内容检测与降 AI 改写服务。
 
 [![Demo](https://img.shields.io/badge/Demo-aigcchecker.com-blue)](https://www.aigcchecker.com/)
@@ -409,7 +462,7 @@ sudo bash manage.sh up
 sudo bash manage.sh check --score
 ```
 
-入口统一管理业务、Ollama 和可选评分容器；复用已有模型及 Token，按 Docker 资源自动分配配额。日常使用 `status`、`logs api`、`update api`，配置集中在 `.env` 和 `deploy.env`。已下载 `models/` 中的 GGUF 时无需重复下载。PPL 为实测指标，当前不参与风险评分。
+入口统一管理业务、Ollama 和可选评分容器；复用已有模型及 Token，按 Docker 资源自动分配配额。日常只改 `.env` 用 `reload api`（不构建），改业务代码用 `update api`（仅构建业务镜像），状态/日志用 `status`、`logs api`。配置集中在 `.env` 和 `deploy.env`。已下载 `models/` 中的 GGUF 时无需重复下载。PPL 为实测指标，当前不参与风险评分。
 
 以下为只更新业务 API 的兼容入口。
 

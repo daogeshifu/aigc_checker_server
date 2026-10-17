@@ -85,6 +85,17 @@ class ModelDeploymentTests(unittest.TestCase):
         connection = commands.index(['network', 'connect', 'aigc-models', 'aigc-checker-server'])
         self.assertGreater(connection, mutation)
 
+    def test_skip_build_never_builds_or_implicitly_pulls_api_image(self):
+        for compose in (True, False):
+            with self.subTest(compose=compose):
+                commands = self.run_script('disploy.sh', network='aigc-models', compose=compose,
+                                           resource_env={'SKIP_DOCKER_BUILD': '1'})
+                self.assertFalse(any(args[0] == 'build' or args[0] == 'compose' and 'build' in args for args in commands))
+                start = next(args for args in commands if args[0] == 'run' or args[0] == 'compose' and 'up' in args)
+                self.assertEqual(start[start.index('--pull') + 1], 'never')
+                if compose:
+                    self.assertIn('--no-build', start)
+
     def test_remote_model_deployment_does_not_connect_extra_network(self):
         commands = self.run_script('disploy.sh')
         self.assertFalse(any(args[:1] == ['network'] for args in commands))

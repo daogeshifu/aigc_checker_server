@@ -112,7 +112,7 @@ class StackManagementTests(unittest.TestCase):
         backup = next(args[2] for args in calls if args[0] == 'rename')
         self.assertEqual(calls[-1], ('rm', backup))
 
-    def exercise_up(self, config=None, fail_build=False):
+    def exercise_up(self, config=None, fail_build=False, *, target='all', build=True):
         events = []
         config = config or self.config
         limits = manage.resources(config, 4, 16 * manage.GIB)
@@ -136,15 +136,43 @@ class StackManagementTests(unittest.TestCase):
              patch.object(manage, 'verify_stack', side_effect=lambda: events.append(('verify',))):
             if fail_build:
                 with self.assertRaises(RuntimeError):
-                    manage.up(self.root, config, limits, 'all')
+                    manage.up(self.root, config, limits, target, build=build)
             else:
-                manage.up(self.root, config, limits, 'all')
+                manage.up(self.root, config, limits, target, build=build)
         return events
 
     def test_failed_build_keeps_running_services_and_original_env(self):
         events = self.exercise_up(fail_build=True)
         self.assertFalse(any(event[0] in {'script', 'scorer'} for event in events))
         self.assertEqual((self.root / '.env').read_text(), self.original)
+
+    def test_reload_applies_configuration_without_any_build_download_or_model_replacement(self):
+        events = self.exercise_up(target='api', build=False)
+        self.assertFalse(any(event[0] in {'download', 'scorer'} for event in events))
+        self.assertFalse(any(event[0] == 'docker' and event[1][0] in {'build', 'run', 'restart', 'start'} for event in events))
+        self.assertEqual([event[1] for event in events if event[0] == 'script'], [['bash', 'disploy.sh']])
+        self.assertIn('PROBABILITY_ENABLED=true', (self.root / '.env').read_text())
+        self.assertEqual(events[-1], ('verify',))
+
+    def test_reload_without_image_fails_before_configuration_or_running_services_change(self):
+        # Keep the expected ValueError distinct from simulated build RuntimeErrors.
+        with patch.object(manage, 'docker', return_value=subprocess.CompletedProcess([], 1, '')), \
+             patch.object(manage, 'run') as script, self.assertRaisesRegex(ValueError, '镜像不存在'):
+            manage.up(self.root, self.config, self.limits, 'api', build=False)
+        script.assert_not_called()
+        self.assertEqual((self.root / '.env').read_text(), self.original)
+
+    def test_code_update_api_builds_only_api_not_scorer(self):
+        events = self.exercise_up(target='api')
+        builds = [event[1] for event in events if event[0] == 'docker' and event[1][0] == 'build']
+        self.assertEqual(builds, [('build', '-t', 'aigc-checker-server:latest', '.')])
+        self.assertFalse(any(event[0] in {'download', 'scorer'} for event in events))
+
+    def test_stopped_model_dependency_is_reported_before_api_can_be_recreated(self):
+        with patch.object(manage, 'inspect', return_value={'State': {'Running': False}}), \
+             patch.object(manage, 'docker') as docker, self.assertRaisesRegex(RuntimeError, '未运行'):
+            manage.ensure_network('aigc-ollama')
+        docker.assert_not_called()
 
     def test_all_images_build_before_model_replacement_and_api_starts_last(self):
         events = self.exercise_up()

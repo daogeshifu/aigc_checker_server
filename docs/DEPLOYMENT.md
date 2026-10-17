@@ -125,7 +125,8 @@ PROBABILITY_BASE_URL=http://aigc-cpu-scorer:8091
 | 目的 | 命令 |
 |---|---|
 | 部署/更新全部服务 | `sudo bash manage.sh up` 或 `sudo bash manage.sh update` |
-| 仅更新业务代码或 Token | `sudo bash manage.sh update api` |
+| 修改 Token、密钥或其他 `.env` 配置，复用已有镜像 | `sudo bash manage.sh reload api` |
+| 仅更新业务代码，只构建 API 镜像 | `sudo bash manage.sh update api` |
 | 仅重建评分服务 | `sudo bash manage.sh update scorer` |
 | 准备 Ollama 模型、调整资源 | `sudo bash manage.sh update ollama` |
 | 查看容器状态 | `sudo bash manage.sh status` |
@@ -139,9 +140,15 @@ PROBABILITY_BASE_URL=http://aigc-cpu-scorer:8091
 | 停止后的完整恢复 | `sudo bash manage.sh up` |
 | 仅下载/校验评分模型 | `bash manage.sh download` |
 
-`restart` 不会重新读取容器外 `.env`，配置更新请使用 `update`。单独更新模型服务不重建 API；改变模型名或评分开关后，应执行完整 `up`。Ollama 更新复用已有容器，不自动替换已有 Ollama 引擎镜像。
+`up`/不带服务名的 `update` 会执行所需镜像的构建步骤，Docker 会复用缓存，不代表每次从零安装依赖。完整更新还会校验 GGUF 并重建评分容器，重新加载模型；这些耗时不适合每次只改 Token 时承担。
 
-管理入口部署当前目录代码，**不自动 git pull**。通过 Git 更新时先自行 `git pull --ff-only`；上传更新包时直接解压再执行 `up` 即可。
+只改 `.env` 使用 `reload api`（省略 api 也可）：检查现有业务镜像和模型依赖后，重建业务容器加载配置；不执行 build、模型下载、GGUF 校验或评分容器重建。现有镜像不存在会直接报错，不会隐式下载或构建。业务容器切换期间仍有短暂中断。
+
+改 Python/HTML/JS 代码使用 `update api`：只构建业务镜像，评分镜像和模型不会更新。`requirements.txt` 不变时依赖安装层通常可直接复用缓存。`reload api` 不能部署源码变化；容器运行的是原镜像内的代码。
+
+`restart api` 仅重启现有业务容器，不重新读取 `.env`，也不更新代码。首次部署、切换提供方、启用尚未运行的评分服务或修改模型容器资源时使用完整 `up`。单独更新模型服务不重建 API；Ollama 更新复用已有容器，不自动替换已有 Ollama 引擎镜像。
+
+管理入口部署当前目录代码，**不自动 git pull**。通过 Git 更新时先自行 `git pull --ff-only`；上传更新包时先解压。日常业务代码更新随后执行 `update api`；只有涉及模型服务的更新才需要完整 `up`。
 
 `tar -xzf 更新包.tar.gz` 只负责把压缩包中的代码解压到当前目录，不会启动或重启 Docker。使用 Git 更新源码时无需执行 tar。更新包不包含线上 `.env`、`deploy.env`、模型及业务数据。
 

@@ -129,6 +129,8 @@ def ensure_network(name):
     item = inspect(name)
     if item is None:
         raise RuntimeError(f"容器 {name} 不存在，请先执行 bash manage.sh up")
+    if not item.get("State", {}).get("Running"):
+        raise RuntimeError(f"模型容器 {name} 未运行，请先执行 bash manage.sh up")
     if NETWORK not in item.get("NetworkSettings", {}).get("Networks", {}):
         docker("network", "connect", NETWORK, name)
 
@@ -275,7 +277,7 @@ print(json.dumps(report, ensure_ascii=False, indent=2))
     docker("exec", NAMES["api"], "python", "-c", code)
 
 
-def up(root, config, limits, target):
+def up(root, config, limits, target, *, build=True):
     if not (root / ".env").is_file():
         raise ValueError("缺少 .env，请先填写现有业务配置和 Token")
     if not limits["ollama_enabled"]:
@@ -288,6 +290,12 @@ def up(root, config, limits, target):
             raise ValueError("BAILIAN_BASE_URL 必须为 HTTPS 地址")
     if target == "scorer" and not limits["enabled"]:
         raise ValueError("deploy.env 的 SCORER_ENABLED=false；改为 true 后执行 up")
+    if not build:
+        if target != "api":
+            raise ValueError("reload 仅支持业务 API；模型服务更新请使用 update scorer/ollama")
+        if docker("image", "inspect", "aigc-checker-server:latest", capture=True, check=False).returncode:
+            raise ValueError("现有业务镜像不存在，请先执行 bash manage.sh update api")
+        say("复用已有业务镜像，仅加载配置；源码变更请使用 update api。")
     model_services = target in {"all", "scorer"} and limits["enabled"]
     if model_services:
         # Existing download is verified and reused; no second download on updates.
@@ -296,7 +304,7 @@ def up(root, config, limits, target):
     if model_services:
         docker("build", "--build-arg", f"BUILD_JOBS={limits['scorer_cpu']}", "-f",
                "cpu_scoring/Dockerfile", "-t", "aigc-cpu-scorer:0.1", ".")
-    if target in {"all", "api"}:
+    if target in {"all", "api"} and build:
         docker("build", "-t", "aigc-checker-server:latest", ".")
     if docker("network", "inspect", NETWORK, capture=True, check=False).returncode:
         docker("network", "create", NETWORK)
@@ -331,13 +339,15 @@ def up(root, config, limits, target):
 
 def main():
     parser = argparse.ArgumentParser(description="统一管理业务 API、Ollama 与可选原文评分服务。")
-    parser.add_argument("command", choices=["up", "update", "status", "logs", "restart", "stop", "check", "download", "config"])
+    parser.add_argument("command", choices=["up", "update", "reload", "status", "logs", "restart", "stop", "check", "download", "config"])
     parser.add_argument("service", nargs="?", choices=["all", "api", "ollama", "scorer"])
     parser.add_argument("--score", action="store_true", help="check 时实际测量短文本的 PPL，不调用云端模型")
     parser.add_argument("-f", "--follow", action="store_true", help="logs 时持续跟随日志")
     args = parser.parse_args()
     if args.score and args.command != "check" or args.follow and args.command != "logs":
         parser.error("--score 仅用于 check；--follow 仅用于 logs")
+    if args.command == "reload" and args.service not in {None, "api"}:
+        parser.error("reload 仅支持 api；更新模型服务请使用 update scorer/ollama")
     os.chdir(ROOT)
     if args.command == "download":
         config = deployment_config(ROOT)
@@ -345,8 +355,8 @@ def main():
         return
     raw = docker("info", "--format", "{{.NCPU}} {{.MemTotal}}", capture=True).stdout.split()
     cpus, memory = map(int, raw)
-    target = args.service or ("api" if args.command == "logs" else "all")
-    if args.command in {"up", "update", "config"}:
+    target = args.service or ("api" if args.command in {"logs", "reload"} else "all")
+    if args.command in {"up", "update", "reload", "config"}:
         config = deployment_config(ROOT)
         limits = resources(config, cpus, memory)
         say(f"Docker：{cpus} 核 / {memory / GIB:.1f}GiB；检测提供方：{config['DETECTION_PROVIDER']}。")
@@ -356,7 +366,7 @@ def main():
         if args.command == "config":
             say(json.dumps(config, ensure_ascii=False, indent=2))
         else:
-            up(ROOT, config, limits, target)
+            up(ROOT, config, limits, target, build=args.command != "reload")
     elif args.command == "check":
         verify_stack(score=args.score)
     else:
@@ -381,7 +391,7 @@ def main():
                 if item and (args.command == "stop" or item["State"].get("Running")):
                     docker(args.command, name)
             if args.command == "restart":
-                say("已重启运行中的服务；.env/deploy.env 变更请使用 update。停止后的整套恢复使用 up。")
+                say("已重启运行中的服务；仅修改 .env 请用 reload api，源码更新用 update api。停止后的整套恢复使用 up。")
 
 
 if __name__ == "__main__":
