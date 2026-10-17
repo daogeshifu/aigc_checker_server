@@ -193,14 +193,15 @@ def sync_app_env(root, config, limits):
     original = path.read_text(encoding="utf-8")
     existing = read_values(path, {"OLLAMA_TIMEOUT", "PROBABILITY_TIMEOUT", "OLLAMA_JSON_NUM_CTX",
                                   "OLLAMA_JSON_NUM_PREDICT", "AZURE_DEPLOYMENT", "AZURE_REVIEW_DEPLOYMENT",
-                                  "PRO_REVIEW_SOURCE", "PRO_REVIEW_MODEL"})
+                                  "PRO_REVIEW_SOURCE", "PRO_REVIEW_MODEL", "AZURE_API_MODE", "AZURE_OPENAI_DEPLOYMENT"})
     review_model = existing.get("AZURE_REVIEW_DEPLOYMENT") or (
         existing.get("PRO_REVIEW_MODEL") if existing.get("PRO_REVIEW_SOURCE", "azure") == "azure" else None
-    ) or existing.get("AZURE_DEPLOYMENT") or "gpt-4o"
+    ) or existing.get("AZURE_OPENAI_DEPLOYMENT") or existing.get("AZURE_DEPLOYMENT") or "gpt-4o"
     overrides = {
         "DETECTION_PROVIDER": config.get("DETECTION_PROVIDER", "ollama"),
         "API_SOURCE": config.get("DETECTION_PROVIDER", "ollama"),
         "PRO_REVIEW_SOURCE": "azure", "AZURE_REVIEW_DEPLOYMENT": review_model, "PRO_REVIEW_MODEL": review_model,
+        "AZURE_API_MODE": existing.get("AZURE_API_MODE") or "v1",
         "OLLAMA_DOCKER_NETWORK": NETWORK,
         "SCAN_CHUNK_CONCURRENCY": "1", "PROBABILITY_ENABLED": str(limits["enabled"]).lower(),
         "PROBABILITY_BASE_URL": "http://aigc-cpu-scorer:8091",

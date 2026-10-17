@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
 from api.detect import router as detect_router
-from services.checker import API_SOURCE, AZURE_DEFAULT_MODEL, OLLAMA_DEFAULT_MODEL, OPENROUTER_DEFAULT_MODEL
+from services.checker import API_SOURCE, AZURE_DEFAULT_MODEL, OLLAMA_DEFAULT_MODEL, OPENROUTER_DEFAULT_MODEL, close_azure_client
 
 
 from services.model_client import DETECTION_PROVIDER, default_model, start_model_client, close_model_client
@@ -24,6 +24,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         await close_model_client()
+        await close_azure_client()
 
 
 app = FastAPI(title="AIGC Checker Engine", version="1.2", lifespan=lifespan)

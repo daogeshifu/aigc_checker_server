@@ -46,6 +46,8 @@ AZURE_REVIEW_DEPLOYMENT=填写已有Azure部署名称
 
 复核固定为 Azure。`AZURE_REVIEW_DEPLOYMENT` 留空时沿用 `AZURE_DEPLOYMENT`；部署入口会将旧 `PRO_REVIEW_SOURCE=openrouter` 迁移为 Azure，并避免把旧 OpenRouter model ID 当作 Azure deployment。保留有效的已有 Azure 复核 deployment。
 
+微软接口默认使用 `AZURE_API_MODE=v1`，与 `wd-ranktool` 的 `AIService::chatWithAzure` 相同：`/openai/v1/chat/completions`、Bearer 鉴权、不传 `api-version`，且不发送固定温度。支持资源根地址或完整 v1 base URL，也兼容该 PHP 项目的 `AZURE_OPENAI_*` 配置命名。模型迁移及配置细节见 [微软 Azure 复核](AZURE_REVIEW.md)。
+
 OpenRouter 仅保留在另一条链路：降 AI 的语义改写仍是 Azure 优先、OpenRouter 兜底，**不参与复核**。`REMOTE_REVIEW_ENABLED=false` 可关闭复核。
 
 改回本地模式时设置 `DETECTION_PROVIDER=ollama`，在 `deploy.env` 指定 Ollama 模型，然后执行完整 `up`。网页显示实际服务器提供方，不能从前端切换它；请求 `model` 仅在 `api_source` 与实际提供方一致时覆盖模型名。

@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover - fallback for minimal local env
     httpx = None
 
 from services.aggregate import aggregate_document, score_chunk
+from services.azure_client import create_azure_client, request_options as azure_request_options
 from services.features import extract_chunk_features, extract_document_features
 from services.judges import judge_chunk_with_qwen
 from services.ollama_client import OLLAMA_DEFAULT_MODEL
@@ -43,7 +44,7 @@ logger = logging.getLogger(__name__)
 API_SOURCE = os.getenv("API_SOURCE", DETECTION_PROVIDER).lower()
 SUPPORTED_API_SOURCES = {"ollama", "bailian", "azure", "openrouter"}
 SCAN_API_SOURCE = DETECTION_PROVIDER
-AZURE_DEFAULT_MODEL = os.getenv("AZURE_DEPLOYMENT", "gpt-4o")
+AZURE_DEFAULT_MODEL = os.getenv("AZURE_OPENAI_DEPLOYMENT") or os.getenv("AZURE_DEPLOYMENT") or "gpt-4o"
 AZURE_REWRITE_DEPLOYMENT = os.getenv("AZURE_REWRITE_DEPLOYMENT", AZURE_DEFAULT_MODEL)
 OPENROUTER_DEFAULT_MODEL = os.getenv("OPENROUTER_MODEL", "qwen/qwen-plus")
 OPENROUTER_REWRITE_MODEL = os.getenv("OPENROUTER_REWRITE_MODEL", OPENROUTER_DEFAULT_MODEL)
@@ -118,26 +119,21 @@ def _resolve_perturb_model(requested_api_source: str, requested_model: str | Non
 
 
 def _get_azure_client():
-    """获取 Azure OpenAI 异步客户端（单例模式），未配置环境变量时返回 None。"""
+    """复用微软直连客户端；默认 v1，未配置凭据时返回 None。"""
     global _azure_client
     # 已初始化则直接复用，避免重复创建连接
     if _azure_client is not None:
         return _azure_client
 
-    azure_key = os.getenv("AZURE_API_KEY")
-    azure_endpoint = os.getenv("AZURE_ENDPOINT")
-    # 缺少必要配置时安全返回 None，由调用方抛出更友好的错误
-    if not azure_key or not azure_endpoint:
-        return None
-
-    from openai import AsyncAzureOpenAI
-
-    _azure_client = AsyncAzureOpenAI(
-        api_key=azure_key,
-        azure_endpoint=azure_endpoint,
-        api_version=os.getenv("AZURE_API_VERSION", "2025-01-01-preview"),
-    )
+    _azure_client = create_azure_client()
     return _azure_client
+
+
+async def close_azure_client():
+    global _azure_client
+    if _azure_client is not None:
+        await _azure_client.close()
+    _azure_client = None
 
 
 def _get_openrouter_client():
@@ -331,25 +327,22 @@ async def _call_azure_json(system_prompt: str, user_prompt: str, deployment_name
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
-    _log_task(task_id, "provider.azure.call", purpose=purpose, deployment=deployment_name)
-    client = _get_azure_client()
-    if not client:
-        _log_task(
-            task_id,
-            "provider.azure.failure",
-            purpose=purpose,
-            deployment=deployment_name,
-            error_type="RuntimeError",
-        )
-        raise RuntimeError("Azure 未配置")
+    _log_task(task_id, "provider.azure.call", purpose=purpose, deployment=deployment_name,
+              api_mode=os.getenv("AZURE_API_MODE", "v1"))
     try:
+        client = _get_azure_client()
+        if not client:
+            raise RuntimeError("Azure 未配置")
         response = await client.chat.completions.create(
             model=deployment_name,
             messages=messages,
-            response_format={"type": "json_object"},
-            temperature=0.2,
+            **azure_request_options(purpose),
         )
-        result = _extract_json(response.choices[0].message.content)
+        choice = response.choices[0]
+        content = choice.message.content
+        if choice.finish_reason == "length" or not isinstance(content, str) or not content.strip():
+            raise ValueError("Azure 未返回完整的最终 JSON")
+        result = _extract_json(content)
     except Exception as exc:
         _log_task(
             task_id,

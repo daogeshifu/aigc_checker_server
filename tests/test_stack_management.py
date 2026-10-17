@@ -217,6 +217,26 @@ class StackManagementTests(unittest.TestCase):
         self.assertEqual(limits['ollama_memory'], 0)
         self.assertEqual(limits['scorer_cpu'], 2)
 
+    def test_php_azure_deployment_alias_is_used_without_changing_credentials(self):
+        with (self.root / '.env').open('a') as stream:
+            stream.write('AZURE_OPENAI_DEPLOYMENT=gpt-5.6-sol\nAZURE_OPENAI_API_KEY=fixture-php-key\n')
+        manage.sync_app_env(self.root, self.config, self.limits)
+        content = (self.root / '.env').read_text()
+        self.assertIn('AZURE_REVIEW_DEPLOYMENT=gpt-5.6-sol', content)
+        self.assertIn('AZURE_API_MODE=v1', content)
+        self.assertIn('AZURE_OPENAI_API_KEY=fixture-php-key', content)
+
+    def test_explicit_gpt6_review_target_and_legacy_mode_are_preserved(self):
+        with (self.root / '.env').open('a') as stream:
+            stream.write('AZURE_OPENAI_DEPLOYMENT=gpt-5.6-sol\n'
+                         'AZURE_REVIEW_DEPLOYMENT=custom-gpt6-sol\n'
+                         'AZURE_REVIEW_REASONING_EFFORT=low\nAZURE_API_MODE=legacy\n')
+        manage.sync_app_env(self.root, self.config, self.limits)
+        content = (self.root / '.env').read_text()
+        self.assertIn('AZURE_REVIEW_DEPLOYMENT=custom-gpt6-sol', content)
+        self.assertIn('AZURE_REVIEW_REASONING_EFFORT=low', content)
+        self.assertIn('AZURE_API_MODE=legacy', content)
+
 
 if __name__ == '__main__':
     unittest.main()
