@@ -303,6 +303,8 @@ curl -X POST "http://127.0.0.1:8027/api/scan" \
 
 `API_TOKEN` 作为管理 Token，可查看 Demo、测试页与第三方 API 的全部任务；`FREE_API_TOKENS` 和 `PRO_API_TOKENS` 仍按 Token 隔离，只能查看自己的记录。任务日志只保存步骤、模型、分块数量、统计分数、状态和耗时等运行元数据。`content`、`text`、`prompt`、改写前后文本等字段会被强制脱敏。
 
+Demo 和接口测试页面底部支持逐次执行日志：执行中每两秒更新真实步骤，区分接口返回、模型调用成功和失败回退，并展示分块评分及完整 JSON。[使用与更新部署说明](docs/DEMO_EXECUTION_LOGS.md)。
+
 ## 环境配置
 
 复制：

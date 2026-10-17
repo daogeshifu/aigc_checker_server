@@ -1061,7 +1061,7 @@ async def run_check(
             scan_phase=scan_phase,
             chunk_id=chunk["chunk_id"],
             judge_mode=qwen_result.get("judge_mode", "qwen"),
-            qwen_score=scored.get("score_breakdown", {}).get("qwen_score"),
+            qwen_score=scored.get("score_breakdown", {}).get("qwen_score") if qwen_result.get("judge_mode") == "qwen" else None,
             feature_score=scored.get("score_breakdown", {}).get("feature_score"),
             style_score=scored.get("score_breakdown", {}).get("style_score"),
             final_score=scored.get("ai_score"),

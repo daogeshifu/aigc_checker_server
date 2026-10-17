@@ -198,6 +198,46 @@
     .toast.error { background: #bd3547; }
 
 
+    .execution-section { margin:0 28px 28px; border:1px solid var(--line); border-radius:16px; background:#fff; overflow:hidden; }
+    .execution-head { padding:20px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); }
+    .execution-head h2 { display:flex; align-items:center; gap:9px; margin:0 0 8px; font-size:15px; }
+    .execution-head p,.execution-empty { margin:0; color:var(--muted); font-size:12px; line-height:1.8; }
+    .execution-actions { display:flex; align-items:center; gap:12px; flex-shrink:0; }
+    .execution-empty { padding:28px 22px; }
+    .execution-run { border-bottom:1px solid var(--line); }
+    .execution-run:last-child { border:0; }
+    .execution-run > summary { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:17px 22px; cursor:pointer; list-style:none; font-size:12px; }
+    .execution-run > summary::-webkit-details-marker { display:none; }
+    .execution-run > summary:before { content:'›'; color:var(--muted); font-size:19px; }
+    .execution-run[open] > summary:before { transform:rotate(90deg); }
+    .execution-run-title { font-weight:650; }
+    .execution-run-time { color:var(--muted); margin-left:auto; font-size:11px; }
+    .execution-badge { border-radius:6px; padding:5px 8px; font-size:11px; background:#edf3ff; color:var(--blue); }
+    .execution-badge.success { color:#117754; background:#eaf8f1; }
+    .execution-badge.attention { color:#93621b; background:#fff4df; }
+    .execution-badge.failed { color:#b33b4b; background:#fff0f2; }
+    .execution-content { padding:0 22px 22px; }
+    .execution-notice { margin:0 0 16px; border-radius:8px; padding:12px; background:#f3f7fd; font-size:12px; line-height:1.8; overflow-wrap:anywhere; }
+    .execution-notice.attention { background:#fff8e9; }
+    .execution-notice.failed { background:#fff1f3; }
+    .execution-meta { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
+    .execution-meta code { font-size:10px; background:#f1f4f8; padding:5px 7px; border-radius:5px; overflow-wrap:anywhere; }
+    .execution-engines { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; margin:14px 0; }
+    .execution-engine { border:1px solid var(--line); border-radius:9px; padding:12px; font-size:12px; line-height:1.9; overflow-wrap:anywhere; }
+    .execution-engine strong { display:block; }
+    .execution-engine small { display:block; color:var(--muted); }
+    .execution-content h3 { font-size:13px; margin:18px 0 10px; }
+    .execution-timeline { max-height:430px; overflow:auto; border:1px solid var(--line); border-radius:9px; padding:14px; }
+    .execution-timeline .event:last-child { padding-bottom:0; }
+    .execution-output { margin-top:12px; border:1px solid var(--line); border-radius:8px; }
+    .execution-output > summary { padding:11px 12px; color:#456282; cursor:pointer; font-size:12px; }
+    .execution-output pre { margin:0; padding:12px; max-height:380px; overflow:auto; background:#f7f9fc; color:#3b526e; white-space:pre-wrap; overflow-wrap:anywhere; font:11px/1.8 ui-monospace,monospace; }
+    .execution-table { overflow:auto; }
+    .execution-table table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:11px; }
+    .execution-table th,.execution-table td { border-bottom:1px solid var(--line); padding:10px; text-align:left; }
+    .execution-table th { color:var(--muted); font-weight:500; background:#f8fafc; }
+    .execution-client { margin:0; padding-left:20px; color:var(--muted); font-size:11px; line-height:1.9; }
+    @media (max-width:760px) { .execution-section { margin:0 14px 18px; } .execution-head { align-items:flex-start; flex-direction:column; padding:16px; } .execution-content { padding:0 14px 16px; } .execution-run > summary { padding:14px; gap:8px; } .execution-run-time { width:100%; margin-left:23px; } }
     @media (min-width:1600px) { main { padding:28px 36px 20px; gap:24px; } .workbench { gap:24px; } textarea { font-size:16px; } }
     @media (max-width:1000px) { .hero-badge { display:none; } .topbar-inner { padding:0 20px; } main { padding:20px; } .workspace-head,.panel-head { padding:15px 16px; } .workspace-body { padding:16px; } .token-wrap { padding:12px 16px 0; } .token-summary { gap:5px; } .token-status { font-size:10px; } .mode-card p { display:none; } .result-card { padding:20px; } }
     @media (max-width:760px) {
@@ -318,7 +358,7 @@
         </div>
 
         <div class="action-row">
-          <div><span class="action-copy" id="actionCopy">检测通常需要数秒，长文本可能需要更久。</span><span class="shortcut">⌘ / Ctrl + Enter 快速开始</span></div>
+          <div><span class="action-copy" id="actionCopy">耗时取决于文本长度和模型速度。</span> <a class="text-btn" href="#executionTitle">查看执行日志</a><span class="shortcut">⌘ / Ctrl + Enter 快速开始</span></div>
           <button class="run-btn" id="runBtn" type="button">
             <span class="spinner"></span>
             <svg class="run-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m5 4 15 8-15 8V4Z"/></svg>
@@ -357,6 +397,14 @@
     <footer class="page-foot"><span>AIGC CHECKER · 文本分析工作台</span><span>支持中文 / English / 混合文本</span></footer>
   </main>
 
+  <section class="execution-section" aria-labelledby="executionTitle">
+    <div class="execution-head">
+      <div><h2 id="executionTitle"><span class="step-number">03</span>执行日志</h2><p>逐次展示真实模型调用、评分与回退；执行中每 2 秒更新。保留本页最近 20 次，刷新后可到「任务记录」查看服务端步骤。</p></div>
+      <div class="execution-actions"><span id="executionCount">0 次请求</span><button class="small-btn" id="clearExecutionBtn" type="button">清空已完成记录</button></div>
+    </div>
+    <div id="executionRuns"><p class="execution-empty">发起检测或改写后，这里会记录请求状态、执行路径、各步骤输出和最终 JSON。日志不展示访问 Token。</p></div>
+  </section>
+
   <div class="modal-shell" id="detailModal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-head"><div><h2 id="modalTitle">任务执行详情</h2><p id="modalTaskId"></p></div><button class="icon-btn" id="closeModalBtn" type="button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
@@ -381,6 +429,7 @@
     const fmtDuration = (ms) => ms == null ? '进行中' : ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)} s`;
     const fmtTime = (iso) => iso ? new Intl.DateTimeFormat('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).format(new Date(iso)) : '--';
     const token = () => window.demoTokenStore.read();
+    let executionLog;
 
     const samples = {
       zh: '人工智能正在改变我们的工作方式，但这种变化并不是简单地用机器替代人。上周三，团队在苏州办公室做了一次小范围测试：12 名编辑分别处理同一篇产品说明，平均节省了 37 分钟。有人觉得效率明显提高，也有人花了更多时间核对事实。真正值得关注的，或许不是工具能写多少，而是人如何判断哪些内容可以交给工具。',
@@ -395,7 +444,10 @@
       'scan.features.document':'切词并提取文档特征', 'scan.chunking.finish':'按句子完成智能分块',
       'scan.chunk.features':'提取分块统计特征', 'judge.route.heuristic':'跳过 Qwen，直接使用统计计算',
       'judge.route.qwen':'调用本地 Qwen 判别', 'judge.qwen.finish':'Qwen 返回分块判断',
-      'judge.qwen.fallback':'Qwen 不可用，回退统计计算', 'scan.chunk.score':'融合三路分数并校正',
+      'judge.qwen.fallback':'Qwen 不可用，回退统计计算', 'scan.chunk.score':'融合模型判断与统计特征并校正',
+      'provider.azure.success':'Azure 调用成功', 'provider.azure.failure':'Azure 调用失败',
+      'provider.openrouter.success':'OpenRouter 调用成功', 'provider.openrouter.failure':'OpenRouter 调用失败',
+      'scan.probability.finish':'完成原文 PPL / NLL 测量', 'scan.probability.failure':'原文概率测量失败',
       'scan.aggregate.finish':'按字符权重聚合文档结果', 'review.decision':'判断是否需要远端大模型复核',
       'review.trigger':'触发远端大模型复核', 'review.skip':'跳过远端大模型复核',
       'review.merge':'融合本地与远端复核分数', 'provider.azure.call':'调用 Azure 大模型',
@@ -411,6 +463,7 @@
     };
     const detailLabels = {
       source:'来源', plan:'套餐', chars:'字符数', input_chars:'输入字符', chars_before:'清洗前', chars_after:'清洗后', max_chars:'上限',
+      nll:'平均负对数似然', perplexity:'原文困惑度', used_in_risk_score:'参与风险分', elapsed_seconds:'测量耗时（秒）', scored_tokens:'已评分词元数',
       scan_phase:'检测阶段', requested_api_source:'请求来源', requested_model:'请求模型', scan_source:'实际引擎', scan_model:'判别模型',
       language:'语言', genre:'文体', token_count:'词元数', sentence_count:'句子数', chunks:'分块数', strategy:'分块策略', target_chars:'目标块长', min_chars:'最小块长',
       chunk_id:'分块', chunk_language:'分块语言', burstiness:'句长波动', lexical_diversity:'词汇多样性', repeated_ngram_ratio:'重复率',
@@ -482,7 +535,7 @@
       state.mode = mode === 'reduce' ? 'reduce' : 'scan';
       $$('.mode-card').forEach(card => card.classList.toggle('active', card.dataset.mode === state.mode));
       $('#runLabel').textContent = state.mode === 'reduce' ? '开始降 AI' : '开始检测';
-      $('#actionCopy').textContent = state.mode === 'reduce' ? '将执行原文检测、组合改写和改写后复检。' : '检测通常需要数秒，长文本会按句子智能分块。';
+      $('#actionCopy').textContent = state.mode === 'reduce' ? '将执行原文检测、组合改写和改写后复检。' : '耗时取决于文本长度和模型速度，长文本会分块处理。';
       renderRouteHint();
     }
 
@@ -499,12 +552,19 @@
       $('#charCount').classList.toggle('invalid', length > 0 && length < 50);
     }
 
-    async function apiFetch(url, options = {}) {
-      const headers = { ...(options.headers || {}), Authorization: `Bearer ${token()}` };
+    async function apiFetch(url, options = {}, authToken = token()) {
+      const headers = { ...(options.headers || {}), Authorization: `Bearer ${authToken}` };
       const response = await fetch(url, { ...options, headers });
       let data;
-      try { data = await response.json(); } catch { data = { detail: `服务返回了非 JSON 响应（HTTP ${response.status}）` }; }
-      if (!response.ok) throw new Error(data.detail || `请求失败（HTTP ${response.status}）`);
+      try { data = await response.json(); } catch {
+        data = { detail: `服务返回了非 JSON 响应（HTTP ${response.status}）` };
+        if (response.ok) { const error = new Error(data.detail); error.status = response.status; error.body = data; throw error; }
+      }
+      if (!response.ok) {
+        const error = new Error(typeof data.detail === 'string' ? data.detail : `请求失败（HTTP ${response.status}）`);
+        error.status = response.status; error.body = data; error.taskId = response.headers.get('X-Task-ID');
+        throw error;
+      }
       return data;
     }
 
@@ -514,21 +574,40 @@
       if (content.length < 50) return showToast('文本至少需要 50 个字符', 'error');
       if (state.loading) return;
 
+      const mode = state.mode;
+      const authToken = token();
+      const run = executionLog.start({ mode, source:state.view, model:$('#modelInput').value.trim() || null, api_source:$('#apiSource').value, chars:content.length }, authToken);
+
       state.loading = true;
       $('#runBtn').disabled = true; $('#runBtn').classList.add('loading');
       $('#runLabel').textContent = state.mode === 'reduce' ? '正在改写与复检…' : '正在分析…';
       $('#resultCard').classList.remove('visible');
+      $('#resultEmpty').hidden = false;
+      $('#emptyTitle').textContent = '正在执行本次请求';
+      $('#emptyDesc').textContent = '请求进度与各步骤的实际输出将在底部执行日志中更新。';
+      $('#resultStatus').textContent = '执行中 · 底部日志持续更新';
+      $('#resultStatus').dataset.status = 'loading';
       const body = {
         content,
         api_source: $('#apiSource').value,
         model: $('#modelInput').value.trim() || null,
-        request_source: state.view
+        request_source: state.view,
+        request_id: run.requestId
       };
       try {
-        const data = await apiFetch(`/api/${state.mode}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+        const data = await apiFetch(`/api/${mode}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }, authToken);
         renderResult(data);
+        $('#resultEmpty').hidden = true;
+        $('#resultStatus').textContent = '已返回 · 执行详情见日志';
+        $('#resultStatus').dataset.status = 'success';
+        await executionLog.finish(run, data);
         showToast('任务执行完成');
       } catch (error) {
+        $('#emptyTitle').textContent = '本次请求未完成';
+        $('#emptyDesc').textContent = error.message || '请查看底部执行日志。';
+        $('#resultStatus').textContent = '请求失败 · 执行详情见日志';
+        $('#resultStatus').dataset.status = 'error';
+        await executionLog.fail(run, error);
         showToast(error.message || '请求失败，请稍后重试', 'error');
       } finally {
         state.loading = false; $('#runBtn').disabled = false; $('#runBtn').classList.remove('loading');
@@ -559,7 +638,9 @@
       $('#reducedText').textContent = isReduce ? (data.reduced || '') : '';
       $('#jsonOutput').textContent = JSON.stringify(data, null, 2);
       $('#resultCard').classList.add('visible');
-      setTimeout(() => $('#resultCard').scrollIntoView({behavior:'smooth', block:'nearest'}), 30);
+      if ($('#executionTitle').getBoundingClientRect().top >= window.innerHeight) {
+        setTimeout(() => $('#resultCard').scrollIntoView({behavior:'smooth', block:'nearest'}), 30);
+      }
     }
 
     function routeSummary(events) {
@@ -613,6 +694,7 @@
     function closeModal() { $('#detailModal').classList.remove('open'); }
 
     window.addEventListener('DOMContentLoaded', () => {
+      executionLog = window.createExecutionLog({ eventLabels, detailLabels, valueLabels });
       window.demoTokenStore.subscribe(updateTokenStatus);
       $('#apiSource').value = CONFIG.apiSource;
       $('#modelInput').value = CONFIG.models[CONFIG.apiSource] || CONFIG.models.ollama;
@@ -652,5 +734,6 @@
       document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
     });
   </script>
+  <script>__EXECUTION_LOG_SCRIPT__</script>
 </body>
 </html>

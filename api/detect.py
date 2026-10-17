@@ -1,7 +1,9 @@
 import hashlib
 import logging
 import os
+import sqlite3
 from typing import Literal, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -81,6 +83,23 @@ class ScanRequest(BaseModel):
     model: Optional[str] = None
     api_source: str = API_SOURCE
     request_source: Literal["demo", "test", "api"] = "api"
+    # Lets the caller follow its exact task while the synchronous POST is running.
+    request_id: UUID | None = None
+
+
+def _start_request_task(kind: str, request: ScanRequest, auth: dict, char_count: int) -> str:
+    task_id = f"{kind}-{request.request_id.hex}" if request.request_id else new_task_id(kind)
+    try:
+        start_task(
+            task_id=task_id, client_id=auth["client_id"], task_type=kind,
+            source=request.request_source, plan=auth["plan"],
+            requested_api_source=request.api_source, requested_model=request.model,
+            char_count=char_count,
+        )
+    except sqlite3.IntegrityError as exc:
+        # Never replace a task belonging to this or another caller on ID reuse.
+        raise HTTPException(status_code=409, detail="请求标识已使用，请重新发起任务。") from exc
+    return task_id
 
 
 def _log(tag: str, task_id: str, request: ScanRequest, text_len: int) -> None:
@@ -112,17 +131,7 @@ async def scan_document(request: ScanRequest, auth_context: dict = Security(_ver
             status_code=400,
             detail=f"当前套餐最多支持 {auth_context['max_chars']} 个字符，当前文本过长。",
         )
-    task_id = new_task_id("scan")
-    start_task(
-        task_id=task_id,
-        client_id=auth_context["client_id"],
-        task_type="scan",
-        source=request.request_source,
-        plan=auth_context["plan"],
-        requested_api_source=request.api_source,
-        requested_model=request.model,
-        char_count=len(text),
-    )
+    task_id = _start_request_task("scan", request, auth_context, len(text))
     try:
         _log("scan", task_id, request, len(text))
         record_task_event(
@@ -168,12 +177,12 @@ async def scan_document(request: ScanRequest, auth_context: dict = Security(_ver
         logger.warning("task=%s step=api.scan.parse_error error=%s", task_id, exc)
         record_task_event(task_id, "api.scan.parse_error", status="failed", details={"error_type": type(exc).__name__})
         fail_task(task_id, "engine_parse_error")
-        raise HTTPException(status_code=502, detail="底层引擎返回了无法解析的格式，请重试。")
+        raise HTTPException(status_code=502, detail="底层引擎返回了无法解析的格式，请重试。", headers={"X-Task-ID": task_id})
     except Exception as exc:
         logger.exception("task=%s step=api.scan.error error=%s", task_id, exc)
         record_task_event(task_id, "api.scan.error", status="failed", details={"error_type": type(exc).__name__})
         fail_task(task_id, "engine_error")
-        raise HTTPException(status_code=500, detail=f"检测引擎服务异常: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"检测引擎服务异常: {str(exc)}", headers={"X-Task-ID": task_id})
 
 
 @router.post("/reduce")
@@ -194,17 +203,7 @@ async def reduce_document(request: ScanRequest, auth_context: dict = Security(_v
             status_code=400,
             detail=f"当前套餐最多支持 {auth_context['max_chars']} 个字符，当前文本过长。",
         )
-    task_id = new_task_id("reduce")
-    start_task(
-        task_id=task_id,
-        client_id=auth_context["client_id"],
-        task_type="reduce",
-        source=request.request_source,
-        plan=auth_context["plan"],
-        requested_api_source=request.api_source,
-        requested_model=request.model,
-        char_count=len(text),
-    )
+    task_id = _start_request_task("reduce", request, auth_context, len(text))
     try:
         _log("reduce", task_id, request, len(text))
         record_task_event(
@@ -251,12 +250,12 @@ async def reduce_document(request: ScanRequest, auth_context: dict = Security(_v
         logger.warning("task=%s step=api.reduce.parse_error error=%s", task_id, exc)
         record_task_event(task_id, "api.reduce.parse_error", status="failed", details={"error_type": type(exc).__name__})
         fail_task(task_id, "engine_parse_error")
-        raise HTTPException(status_code=502, detail="底层引擎返回了无法解析的格式，请重试。")
+        raise HTTPException(status_code=502, detail="底层引擎返回了无法解析的格式，请重试。", headers={"X-Task-ID": task_id})
     except Exception as exc:
         logger.exception("task=%s step=api.reduce.error error=%s", task_id, exc)
         record_task_event(task_id, "api.reduce.error", status="failed", details={"error_type": type(exc).__name__})
         fail_task(task_id, "engine_error")
-        raise HTTPException(status_code=500, detail=f"降 AI 引擎服务异常: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"降 AI 引擎服务异常: {str(exc)}", headers={"X-Task-ID": task_id})
 
 
 @router.get("/tasks")

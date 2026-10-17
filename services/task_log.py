@@ -151,7 +151,7 @@ def start_task(
     with _LOCK, _connect() as connection:
         connection.execute(
             """
-            INSERT OR REPLACE INTO tasks (
+            INSERT INTO tasks (
                 task_id, client_id, task_type, source, status, plan,
                 requested_api_source, requested_model, char_count,
                 result_summary, error_code, created_at, updated_at, duration_ms
