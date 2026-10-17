@@ -18,3 +18,5 @@ nohup.out
 server.pid
 tests
 scripts
+models
+dist

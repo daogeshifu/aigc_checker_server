@@ -43,6 +43,35 @@ else
 fi
 
 echo ">>> 2/5 校验配置并准备数据目录"
+# Optional local model network; remote Ollama deployments keep their old behavior.
+# Read just this literal setting, without executing .env as shell code or printing keys.
+MODEL_NETWORK="${OLLAMA_DOCKER_NETWORK:-}"
+if [ -z "$MODEL_NETWORK" ]; then
+    MODEL_NETWORK="$(python3 - <<'PY'
+from pathlib import Path
+import shlex
+value = ''
+for line in Path('.env').read_text(encoding='utf-8').splitlines():
+    key, separator, raw = line.partition('=')
+    if separator and key.strip() == 'OLLAMA_DOCKER_NETWORK':
+        parts = shlex.split(raw, comments=True)
+        if len(parts) > 1:
+            raise SystemExit('OLLAMA_DOCKER_NETWORK 必须为单个网络名称')
+        value = parts[0] if parts else ''
+print(value)
+PY
+)"
+fi
+if [ -n "$MODEL_NETWORK" ]; then
+    if [[ ! "$MODEL_NETWORK" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
+        echo "错误：OLLAMA_DOCKER_NETWORK 格式不合法。"
+        exit 1
+    fi
+    if ! docker network inspect "$MODEL_NETWORK" >/dev/null 2>&1; then
+        echo "错误：模型网络 $MODEL_NETWORK 尚不存在，请先运行 bash scripts/deploy_ollama.sh。"
+        exit 1
+    fi
+fi
 if [ "${DEPLOY_MODE}" = "compose" ]; then
     "${COMPOSE[@]}" config --quiet
 fi
@@ -84,6 +113,13 @@ else
         --log-opt max-size=10m \
         --log-opt max-file=3 \
         "${IMAGE_NAME}"
+fi
+
+if [ -n "$MODEL_NETWORK" ]; then
+    if ! docker network inspect --format '{{range .Containers}}{{println .Name}}{{end}}' "$MODEL_NETWORK" |
+        grep -Fxq "$CONTAINER_NAME"; then
+        docker network connect "$MODEL_NETWORK" "$CONTAINER_NAME"
+    fi
 fi
 
 show_logs() {

@@ -19,6 +19,7 @@ from services.features import extract_chunk_features, extract_document_features
 from services.judges import judge_chunk_with_qwen
 from services.ollama_client import OLLAMA_DEFAULT_MODEL, generate_text
 from services.preprocess import chunk_text, clean_text, detect_genre, detect_language
+from services.probability_client import measure_probability
 from services.prompts import (
     REDUCE_PERTURB_SYSTEM_PROMPT,
     REDUCE_SEMANTIC_REWRITE_SYSTEM_PROMPT,
@@ -1086,6 +1087,15 @@ async def run_check(
 
     # Step 3: 将分块结果聚合为文档级结论
     result = aggregate_document(enriched_chunks, genre, doc_features)
+    # Score the cleaned whole document once, retaining context across text chunks.
+    # Raw PPL has no calibrated mapping to authorship: expose it as a measurement.
+    probability = await measure_probability(cleaned, task_id=task_id)
+    result["probability"] = probability
+    if probability["status"] == "measured":
+        result["metrics"]["perplexity"] = probability["perplexity"]
+        result["metrics"]["nll"] = probability["nll"]
+    elif probability["status"] == "unavailable":
+        result["warnings"] = sorted(set(result["warnings"] + ["probability_unavailable"]))
     _log_task(
         task_id,
         "scan.aggregate.finish",

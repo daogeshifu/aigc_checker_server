@@ -1,5 +1,8 @@
 .idea
 .env
+.env.cpu
+models/
+dist/
 .venv
 __pycache__
 *.pyc

@@ -30,6 +30,7 @@ app.include_router(detect_router, prefix="/api")
 
 _DEMO_PAGE = Path(__file__).with_name("web") / "demo.html"
 _TASKS_PAGE = Path(__file__).with_name("web") / "tasks.html"
+_TOKEN_SCRIPT = Path(__file__).with_name("web") / "daily-token.js"
 
 
 @app.get("/health", include_in_schema=False)
@@ -49,6 +50,7 @@ def _render_demo_page(initial_view: str = "demo") -> str:
         else OPENROUTER_DEFAULT_MODEL
     )
     replacements = {
+        "__DAILY_TOKEN_SCRIPT__": _TOKEN_SCRIPT.read_text(encoding="utf-8"),
         "__INITIAL_VIEW__": initial_view,
         "__API_SOURCE__": API_SOURCE,
         "__DEFAULT_MODEL__": default_model,
@@ -78,4 +80,7 @@ async def get_test_page():
 
 @app.get("/tasks", response_class=HTMLResponse)
 async def get_tasks_page():
-    return HTMLResponse(content=_TASKS_PAGE.read_text(encoding="utf-8"), headers={"Cache-Control": "no-store"})
+    html = _TASKS_PAGE.read_text(encoding="utf-8").replace(
+        "__DAILY_TOKEN_SCRIPT__", _TOKEN_SCRIPT.read_text(encoding="utf-8")
+    )
+    return HTMLResponse(content=html, headers={"Cache-Control": "no-store"})

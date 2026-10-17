@@ -152,47 +152,45 @@
 | 单句且 ≤ 阈值字符 | 短句块，en 阈值 110，其他 170 |
 | `list_or_table` 文体或列表行占比 ≥ 阈值 | 结构化块，en 阈值 0.75，其他 0.55 |
 | 非英文且字符 ≤ 170 | 短块 |
-| business/academic 且细节 ≥ 阈值 且 n-gram 重复率 < 0.035 | 细节密集正式文本，en 阈值 8，其他 5 |
 
 **LLM 调用失败**（超时/格式异常）→ `_heuristic_fallback`：
 - 纯统计信号加权计算 AI 分，置信度固定 **0.38**（提示结果仅供参考）
 
-**Qwen 输出归一化**（`_normalize_qwen_result`）：label/score/confidence/signals/perplexity_proxy/binoculars_score 缺字段时按 label 默认值补全。
+**Qwen 输出校验**（`_normalize_qwen_result`）：严格校验 ai_score、confidence、label 和四个 signals，缺失或非法值触发明确的统计回退；模型不得生成 perplexity 或 binoculars 数值。
 
 ### 4.6 chunk 评分（`aggregate.py::score_chunk`）
 
 ```text
-final_chunk_score = 0.55 * qwen_score   (LLM 判别分)
+final_chunk_score = 0.70 * qwen_score   (LLM 判别分)
                   + 0.30 * feature_score (统计特征分)
-                  + 0.15 * style_score   (Qwen signals 风格分)
 ```
+
+模型跳过或失败时仅使用 feature_score；style_score 仅作解释，不重复参与融合。这些权重尚未用标注数据拟合。
 
 随后规则修正：
 
 | 修正 | 规则 |
 |---|---|
 | 文体 | business_doc/academic -8；list_or_table -15；translation_like -6；marketing +3 |
-| 细节信号 | 细节 ≥ 3 时每个 -2.5，最多 -14 |
-| 列表占比 | > 0.35 时 -8 |
 | 短文本 | < 120 字符向 50 收缩 ×0.7，置信度 ×0.72 |
 | 单句 | 置信度 ×0.85 |
 
 置信度：
 
 ```text
-confidence = (0.45 * qwen_confidence + 0.25 * min(chars/260, 1) + 0.30 * agreement) * scale
-agreement = 1 - |qwen_score - feature_score| / 100   # LLM 与统计分一致性
+confidence = qwen_confidence * scale
 ```
+
+统计回退置信度最多 0.38；模型与统计分相差至少 35 或文本不足 120 字符时最多 0.44。短文和单句的缩放按上表执行。
 
 ### 4.7 文档聚合（`aggregate.py::aggregate_document`）
 
 - `ai_probability`：各 chunk `ai_score` **按字符数加权平均**
-- 短文档（<120 字符）向 50 收缩 ×0.65，置信度 ×0.7
-- 正式文体（business_doc/academic/list_or_table）且分数 < 70 时额外 -4
-- `confidence`：chunk 平均置信度 → `≥0.72 high / ≥0.45 medium / 其余 low`
+- 文体与短文本评分修正仅在分块执行一次，不在文档重复扣分
+- `confidence`：按字符权重聚合 chunk 置信度 → `≥0.72 high / ≥0.45 medium / 其余 low`；大量统计回退、检测分歧或极短文档保持低置信度
 - `label`：`≥70 AI Generated / ≥40 Mixed / 其余 Human Written`
 - `high_risk_chunks`：`ai_score ≥ 65` 的 chunk id 列表（用于改写优先级）
-- `metrics`：perplexity（chunk 加权 ppl proxy）、burstiness、binoculars
+- `metrics`：burstiness 是实测句长波动；默认 perplexity 为 null。启用 `PROBABILITY_ENABLED` 后，`checker.py` 另行调用 CPU 评分服务，对清洗后的整篇文本计算真实 PPL/NLL，元信息保存在 `probability`。评分失败显式告警；Binoculars 仍未实现
 - `sentences`：每 chunk 的热力级别（1-10）
 - `vocab`：高频可疑词 Top10
 
@@ -200,7 +198,7 @@ agreement = 1 - |qwen_score - feature_score| / 100   # LLM 与统计分一致性
 
 真实计算的特征：`char_count`、`sentence_count`、`avg_sentence_length`、`sentence_length_std`、`burstiness`（变异系数）、`lexical_diversity`、`repeated_ngram_ratio`（中文 4-gram / 英文词 3-gram / mixed 取高）、`punctuation_density`、`connector_density`、`paragraph_length_variance`、`detail_signal_count`、`digit_density`、`list_line_ratio`、`suspicious_terms`。
 
-> `pseudo_perplexity` 目前为 TODO 占位（返回 None）。
+> `features.pseudo_perplexity` 是旧占位字段（仍返回 None）。真实文档 PPL 来自独立 `cpu_scoring` 服务，不使用该字段，也不参与未经校准的风险分融合。部署见 [CPU 四步说明](docs/CPU_DEPLOYMENT.md)。
 
 ### 4.9 远端二审（Pro 专用，`checker.py`）
 
@@ -346,6 +344,6 @@ model = light
 ## 9. 已知占位/待完善点
 
 - `calibration.py` 为 identity mapping，校准层未实际生效
-- `features.compute_pseudo_perplexity` 为 TODO，`metrics.perplexity` 实际来自 Qwen 的 `perplexity_proxy`
+- `features.compute_pseudo_perplexity` 是旧占位；可选 CPU 原文服务已能计算真实 `metrics.perplexity` 和 NLL，但尚未拟合其与 AI 来源的关系
 - 远程复核仅融合 `ai_score`，`label` 以融合分重映射
 - `_split_text_units` / `_detail_score` 等改写辅助逻辑规则较硬编码，后续可参数化

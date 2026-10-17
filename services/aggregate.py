@@ -198,7 +198,8 @@ def aggregate_document(chunks: list[dict], genre: str, doc_features: dict) -> di
     high_risk_chunks = [chunk["chunk_id"] for chunk in chunks if chunk.get("ai_score", 0) >= 65]
 
     # These algorithms are not implemented. Never fabricate proxy measurements.
-    metrics = {"perplexity": None, "burstiness": doc_features.get("burstiness"), "binoculars": None}
+    # PPL/NLL can be populated by the optional document scorer in checker.py.
+    metrics = {"perplexity": None, "nll": None, "burstiness": doc_features.get("burstiness"), "binoculars": None}
 
     # Chunk-level visualization; the legacy sentences key is explicitly deprecated.
     sentences = [

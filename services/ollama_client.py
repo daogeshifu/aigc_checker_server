@@ -23,6 +23,11 @@ OLLAMA_JSON_NUM_CTX = int(os.getenv("OLLAMA_JSON_NUM_CTX", "1536"))
 OLLAMA_JSON_NUM_PREDICT = max(256, int(os.getenv("OLLAMA_JSON_NUM_PREDICT", "256")))
 OLLAMA_MAX_CONCURRENCY = max(1, int(os.getenv("OLLAMA_MAX_CONCURRENCY", "1")))
 OLLAMA_DISABLE_THINKING = os.getenv("OLLAMA_DISABLE_THINKING", "true").lower() not in {"false", "0", "no"}
+OLLAMA_NUM_THREAD = int(os.getenv("OLLAMA_NUM_THREAD", "0"))
+
+
+def _cpu_options() -> dict:
+    return {"num_thread": OLLAMA_NUM_THREAD} if OLLAMA_NUM_THREAD > 0 else {}
 
 
 _http_client = None
@@ -157,6 +162,7 @@ async def generate_json(
     """
     actual_model = model or OLLAMA_DEFAULT_MODEL
     merged_options = {
+        **_cpu_options(),
         "temperature": 0.0,
         "num_ctx": OLLAMA_JSON_NUM_CTX,
         "num_predict": OLLAMA_JSON_NUM_PREDICT,
@@ -217,7 +223,7 @@ async def generate_text(
     temperature 设为 0.3，比 JSON 模式略高，允许适度的表达多样性（适合改写场景）。
     """
     actual_model = model or OLLAMA_DEFAULT_MODEL
-    merged_options = {"temperature": 0.3}
+    merged_options = {**_cpu_options(), "temperature": 0.3}
     if options:
         merged_options.update(options)
 

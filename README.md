@@ -265,7 +265,7 @@ Content-Type: application/json
 | `chunks` | chunk 级结果 |
 | `analysis` | `genre / language / high_risk_chunks` |
 | `summary` | 摘要信息 |
-| `metrics` | burstiness 为实测句长波动；perplexity 和 binoculars 未实现，返回 null |
+| `metrics` | burstiness 为实测句长波动；perplexity/NLL 可由可选原文评分服务计算，未启用或失败返回 null；binoculars 未实现 |
 | `review` | 远程复核元信息 |
 | `plan` | 套餐标记 |
 | `task_id` | 本次请求的任务 ID，可用于查询脱敏执行轨迹 |
@@ -493,6 +493,12 @@ curl --fail http://127.0.0.1:8027/health
 如果你在生产环境中使用了这个项目，欢迎附上你的使用场景和优化建议。
 
 
+## Ubuntu CPU 部署：8 核 / 32GB
+
+已经部署本项目时，优先按 [独立 Ollama Docker 部署说明](docs/OLLAMA_DOCKER.md) 新增模型容器，修改原 `.env` 并沿用原更新流程，无需重新部署整套项目。`disploy.sh` 支持配置 `OLLAMA_DOCKER_NETWORK`，重建 API 容器后自动恢复模型网络连接。
+
+从零搭建整套 CPU 环境时，可选 [CPU 四步部署说明](docs/CPU_DEPLOYMENT.md)，同时部署 Qwen4B 量化判别和真实原文 PPL 服务。PPL 先作为实测指标返回，未训练校准前不改变现有风险分。
+
 ## 检测引擎 2.0 行为与迁移
 
 - 修复英文句号断句，保护常见称谓、首字母、小数、版本号与域名；句长统计保留短句。
@@ -501,7 +507,7 @@ curl --fail http://127.0.0.1:8027/health
 - Qwen 输入不再包含数值特征，风格子分只作解释。暂用 70% Qwen + 30% 统计；模型跳过或失败时只用统计。数字细节不再额外减分或触发模型跳过，文体修正仅在分块层执行一次。这些权重和文体规则尚未用标注集拟合。
 - 低置信度返回 `label: "Insufficient Evidence"`、`assessment_status: "insufficient_evidence"`；可继续读取 `score_label` 查看原有风险区间标签。正常结果状态为 `assessed`。消费者须支持新增标签。
 - `risk_score` 为 0–100 数字；`ai_probability` 保留原字符串格式。`score_semantics: "uncalibrated_risk_score"` 和 `calibrated: false` 明确表示尚非来源概率。
-- 未实现的 `metrics.perplexity`、`metrics.binoculars` 及分块代理字段始终为 `null`；模型不再生成这些数字。消费者不可将 null 当 0。
+- 默认未开启原文评分时 `metrics.perplexity` 为 `null`；启用 `PROBABILITY_ENABLED` 并成功调用独立评分服务后，返回文档级真实 PPL 和 NLL，算法/模型信息见 `probability`。评分失败显式告警，不伪造数值。`metrics.binoculars` 及分块代理字段仍为 `null`。消费者不可将 null 当 0。
 - 推荐使用 `segments`，`sentences` 作为兼容别名保留；二者 `granularity` 均为 `chunk`。`summary.percentages` 只作历史展示权重，不代表实际内容组成比例。`vocab` 只说明重复，不能作为来源证据。
 - `warnings` 记录规则降级、短文本和检测分歧。全文置信度按块长度加权；规则结果不因互相一致而提升置信度。
 - 远端复核不读取本地数值分数，选择高风险、分歧和代表片段并提供全文；严重分歧时标记证据不足。远端只更新文档结论，分块分数仍是本地结果（`review.scope: "document_only"`）。
@@ -532,4 +538,4 @@ curl --fail http://127.0.0.1:8027/health
 
 脚本完全离线，检查重复 ID、跨分组来源泄漏和非法分数；输出误报率、召回率、覆盖率、各类拒判率、AUROC、风险分桶实际 AI 比例，以及语言/文体/长度切片。混合标签不参与二分类指标；证据不足保留在误报率和召回率的分母，防止通过大量拒判虚增指标。
 
-下一步需要真实标注数据：只在训练/校准集调整权重、阈值与概率校准，在冻结的测试集验证。真实 token 概率、Binoculars / Fast-DetectGPT 仍需独立模型服务和本地语言评测，本版本没有把未执行的算法伪装成已接入。
+下一步需要真实标注数据：只在训练/校准集调整权重、阈值与概率校准，在冻结的测试集验证。可选 CPU 原文评分服务现已计算真实 token 概率、PPL 和 NLL，但尚未将其映射为来源概率。Binoculars / Fast-DetectGPT 仍未实现。

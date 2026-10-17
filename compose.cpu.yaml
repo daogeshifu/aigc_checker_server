@@ -1,0 +1,75 @@
+# Standalone CPU deployment. Always use --env-file .env.cpu and the documented project name.
+services:
+  aigc-checker-server:
+    container_name: aigc-checker-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aigc-checker-server:cpu
+    env_file:
+      - ${CPU_ENV_FILE:-.env.cpu}
+    environment:
+      TASK_LOG_DB_PATH: /app/data/task_logs.db
+      OLLAMA_BASE_URL: http://cpu-ollama:11434
+      PROBABILITY_BASE_URL: http://cpu-scorer:8091
+    ports:
+      - "8027:8027"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      cpu-ollama:
+        condition: service_healthy
+      cpu-scorer:
+        condition: service_healthy
+    cpus: 1
+    mem_limit: 4g
+    restart: unless-stopped
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  cpu-ollama:
+    image: ${OLLAMA_IMAGE:-ollama/ollama:latest}
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_MAX_QUEUE: "8"
+    volumes:
+      - cpu-ollama:/root/.ollama
+      - ./models:/models:ro
+    cpus: 4
+    mem_limit: 10g
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+    logging: *logging
+
+  cpu-scorer:
+    build:
+      context: .
+      dockerfile: cpu_scoring/Dockerfile
+    image: aigc-cpu-scorer:0.1
+    environment:
+      SCORER_MODEL_PATH: /models/Qwen3-4B-Q4_K_M.gguf
+      SCORER_THREADS: ${SCORER_THREADS:-4}
+      SCORER_CONTEXT_TOKENS: ${SCORER_CONTEXT_TOKENS:-1024}
+      SCORER_STRIDE_TOKENS: ${SCORER_STRIDE_TOKENS:-512}
+      SCORER_MAX_TOKENS: "16000"
+    ports:
+      - "127.0.0.1:8091:8091"
+    volumes:
+      - ./models:/models:ro
+    cpus: 4
+    mem_limit: 10g
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  cpu-ollama:
