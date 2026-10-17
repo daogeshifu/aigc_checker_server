@@ -37,6 +37,7 @@ _DEMO_PAGE = Path(__file__).with_name("web") / "demo.html"
 _TASKS_PAGE = Path(__file__).with_name("web") / "tasks.html"
 _TOKEN_SCRIPT = Path(__file__).with_name("web") / "daily-token.js"
 _EXECUTION_SCRIPT = Path(__file__).with_name("web") / "execution-log.js"
+_HISTORY_SCRIPT = Path(__file__).with_name("web") / "task-history.js"
 
 
 @app.get("/health", include_in_schema=False)
@@ -52,6 +53,7 @@ def _render_demo_page(initial_view: str = "demo") -> str:
     replacements = {
         "__DAILY_TOKEN_SCRIPT__": _TOKEN_SCRIPT.read_text(encoding="utf-8"),
         "__EXECUTION_LOG_SCRIPT__": _EXECUTION_SCRIPT.read_text(encoding="utf-8"),
+        "__TASK_HISTORY_SCRIPT__": _HISTORY_SCRIPT.read_text(encoding="utf-8"),
         "__INITIAL_VIEW__": initial_view,
         "__API_SOURCE__": DETECTION_PROVIDER,
         "__DEFAULT_MODEL__": active_model,

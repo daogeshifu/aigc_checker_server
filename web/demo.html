@@ -222,21 +222,25 @@
     .execution-notice.failed { background:#fff1f3; }
     .execution-meta { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
     .execution-meta code { font-size:10px; background:#f1f4f8; padding:5px 7px; border-radius:5px; overflow-wrap:anywhere; }
-    .execution-engines { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; margin:14px 0; }
-    .execution-engine { border:1px solid var(--line); border-radius:9px; padding:12px; font-size:12px; line-height:1.9; overflow-wrap:anywhere; }
-    .execution-engine strong { display:block; }
-    .execution-engine small { display:block; color:var(--muted); }
     .execution-content h3 { font-size:13px; margin:18px 0 10px; }
     .execution-timeline { max-height:430px; overflow:auto; border:1px solid var(--line); border-radius:9px; padding:14px; }
     .execution-timeline .event:last-child { padding-bottom:0; }
-    .execution-output { margin-top:12px; border:1px solid var(--line); border-radius:8px; }
-    .execution-output > summary { padding:11px 12px; color:#456282; cursor:pointer; font-size:12px; }
-    .execution-output pre { margin:0; padding:12px; max-height:380px; overflow:auto; background:#f7f9fc; color:#3b526e; white-space:pre-wrap; overflow-wrap:anywhere; font:11px/1.8 ui-monospace,monospace; }
     .execution-table { overflow:auto; }
     .execution-table table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:11px; }
     .execution-table th,.execution-table td { border-bottom:1px solid var(--line); padding:10px; text-align:left; }
     .execution-table th { color:var(--muted); font-weight:500; background:#f8fafc; }
-    .execution-client { margin:0; padding-left:20px; color:var(--muted); font-size:11px; line-height:1.9; }
+    .execution-times { display:flex; flex-wrap:wrap; gap:12px 24px; margin:0 0 14px; font-size:11px; color:var(--muted); }
+    .execution-times strong { display:block; margin-top:5px; color:var(--ink); font-weight:500; }
+    .history-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:16px 22px; }
+    .history-toolbar input[type="search"],.history-toolbar select { height:34px; padding:0 10px; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--ink); font-family:inherit; font-size:12px; }
+    .history-toolbar label { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+    .history-message { padding:0 22px 14px; margin:0; color:var(--muted); font-size:11px; line-height:1.8; }
+    .history-table table { min-width:1000px; }
+    .history-table td { padding:14px 12px; vertical-align:top; }
+    .history-table small { display:block; margin-top:5px; color:var(--muted); font-size:10px; }
+    .history-table .history-result { white-space:normal; min-width:180px; max-width:260px; overflow-wrap:anywhere; }
+    .history-pager { display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:12px; padding:14px 22px; font-size:11px; color:var(--muted); border-top:1px solid var(--line); }
+    .execution-section button:disabled { opacity:.45; cursor:default; }
     @media (max-width:760px) { .execution-section { margin:0 14px 18px; } .execution-head { align-items:flex-start; flex-direction:column; padding:16px; } .execution-content { padding:0 14px 16px; } .execution-run > summary { padding:14px; gap:8px; } .execution-run-time { width:100%; margin-left:23px; } }
     @media (min-width:1600px) { main { padding:28px 36px 20px; gap:24px; } .workbench { gap:24px; } textarea { font-size:16px; } }
     @media (max-width:1000px) { .hero-badge { display:none; } .topbar-inner { padding:0 20px; } main { padding:20px; } .workspace-head,.panel-head { padding:15px 16px; } .workspace-body { padding:16px; } .token-wrap { padding:12px 16px 0; } .token-summary { gap:5px; } .token-status { font-size:10px; } .mode-card p { display:none; } .result-card { padding:20px; } }
@@ -399,10 +403,27 @@
 
   <section class="execution-section" aria-labelledby="executionTitle">
     <div class="execution-head">
-      <div><h2 id="executionTitle"><span class="step-number">03</span>执行日志</h2><p>逐次展示真实模型调用、评分与回退；执行中每 2 秒更新。保留本页最近 20 次，刷新后可到「任务记录」查看服务端步骤。</p></div>
+      <div><h2 id="executionTitle"><span class="step-number">03</span>本次任务日志</h2><p>仅记录核心步骤、返回结果、返回时间和耗时；执行中每 2 秒更新。本页保留最近 20 次。</p></div>
       <div class="execution-actions"><span id="executionCount">0 次请求</span><button class="small-btn" id="clearExecutionBtn" type="button">清空已完成记录</button></div>
     </div>
-    <div id="executionRuns"><p class="execution-empty">发起检测或改写后，这里会记录请求状态、执行路径、各步骤输出和最终 JSON。日志不展示访问 Token。</p></div>
+    <div id="executionRuns"><p class="execution-empty">发起检测或改写后，这里展示核心步骤、返回结果、返回时间和耗时。</p></div>
+  </section>
+
+  <section class="execution-section" aria-labelledby="historyTitle">
+    <div class="execution-head">
+      <div><h2 id="historyTitle"><span class="step-number">04</span>全部任务日志</h2><p>查看 Demo、测试页及外部 API 创建的检测与改写任务，点击「查看过程」跟踪核心执行日志。</p></div>
+      <div class="execution-actions"><span class="execution-badge" id="historyScope">等待鉴权</span><button class="small-btn" id="refreshHistoryBtn" type="button">刷新全部日志</button></div>
+    </div>
+    <div class="history-toolbar">
+      <input id="historySearch" type="search" placeholder="搜索 Task ID" aria-label="搜索任务 ID" maxlength="100">
+      <select id="historySource" aria-label="筛选任务来源"><option value="">全部来源</option><option value="api">外部 API</option><option value="demo">Demo</option><option value="test">接口测试</option></select>
+      <select id="historyType" aria-label="筛选任务类型"><option value="">全部类型</option><option value="scan">AI 检测</option><option value="reduce">降 AI 改写</option></select>
+      <select id="historyStatus" aria-label="筛选任务状态"><option value="">全部状态</option><option value="running">执行中</option><option value="success">已返回</option><option value="failed">失败</option></select>
+      <label><input id="historyAutoRefresh" type="checkbox" checked>每 5 秒自动刷新</label>
+    </div>
+    <p class="history-message" id="historyMessage" role="status">任务日志保存在服务端，页面刷新后仍可查看。</p>
+    <div class="execution-table history-table" id="historyTable"><p class="execution-empty">填写访问 Token 后，可查看服务端保存的任务日志。</p></div>
+    <div class="history-pager"><span id="historyPageInfo">共 0 条</span><button id="historyPrevBtn" class="small-btn" type="button" disabled>上一页</button><button id="historyNextBtn" class="small-btn" type="button" disabled>下一页</button></div>
   </section>
 
   <div class="modal-shell" id="detailModal">
@@ -422,12 +443,10 @@
       models: { ollama: '__OLLAMA_DEFAULT_MODEL__', bailian: '__BAILIAN_DEFAULT_MODEL__', azure: '__AZURE_DEFAULT_MODEL__', openrouter: '__OPENROUTER_DEFAULT_MODEL__' }
     };
 
-    const state = { view: CONFIG.initialView, mode: 'scan', loading: false, tasks: [], tokenValue: null };
+    const state = { view: CONFIG.initialView, mode: 'scan', loading: false, tokenValue: null };
     const $ = (selector) => document.querySelector(selector);
     const $$ = (selector) => [...document.querySelectorAll(selector)];
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
-    const fmtDuration = (ms) => ms == null ? '进行中' : ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)} s`;
-    const fmtTime = (iso) => iso ? new Intl.DateTimeFormat('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).format(new Date(iso)) : '--';
     const token = () => window.demoTokenStore.read();
     let executionLog;
 
@@ -462,7 +481,7 @@
       'api.scan.parse_error':'底层结果解析失败', 'api.reduce.parse_error':'底层结果解析失败'
     };
     const detailLabels = {
-      source:'来源', plan:'套餐', chars:'字符数', input_chars:'输入字符', chars_before:'清洗前', chars_after:'清洗后', max_chars:'上限',
+      source:'来源', plan:'套餐', chars:'字符数', input_chars:'输入字符', chars_before:'清洗前', chars_after:'清洗后', max_chars:'上限', deployment:'部署模型', status:'状态',
       nll:'平均负对数似然', perplexity:'原文困惑度', used_in_risk_score:'参与风险分', elapsed_seconds:'测量耗时（秒）', scored_tokens:'已评分词元数',
       scan_phase:'检测阶段', requested_api_source:'请求来源', requested_model:'请求模型', scan_source:'实际引擎', scan_model:'判别模型',
       language:'语言', genre:'文体', token_count:'词元数', sentence_count:'句子数', chunks:'分块数', strategy:'分块策略', target_chars:'目标块长', min_chars:'最小块长',
@@ -643,58 +662,11 @@
       }
     }
 
-    function routeSummary(events) {
-      const routes = [];
-      const push = (label) => { if (!routes.includes(label)) routes.push(label); };
-      events.forEach(event => {
-        if (event.step === 'scan.preprocess.clean') push('文本清洗');
-        if (event.step === 'scan.features.document') push('切词 / 特征');
-        if (event.step === 'scan.chunking.finish') push('智能分块');
-        if (event.step === 'judge.route.qwen') push(event.details?.provider === 'bailian' ? '百炼 Qwen' : 'Ollama Qwen');
-        if (event.step === 'judge.route.heuristic') push('统计直算');
-        if (event.step === 'provider.azure.call') push(`Azure ${event.details.deployment || ''}`.trim());
-        if (event.step.includes('openrouter') && event.step.includes('call')) push(`OpenRouter ${event.details.model || ''}`.trim());
-        if (event.step === 'scan.aggregate.finish') push('加权聚合');
-        if (event.step === 'api.scan.return' || event.step === 'api.reduce.return') push('返回数值');
-      });
-      return routes.length ? routes : ['暂无路由信息'];
-    }
-
-    async function openTaskDetail(taskId) {
-      $('#detailModal').classList.add('open');
-      $('#modalTaskId').textContent = taskId;
-      $('#modalBody').innerHTML = '<div class="empty">正在读取执行轨迹…</div>';
-      try {
-        const task = await apiFetch(`/api/tasks/${encodeURIComponent(taskId)}`);
-        renderTaskDetail(task);
-      } catch (error) { $('#modalBody').innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; }
-    }
-
-    function renderTaskDetail(task) {
-      const events = task.events || [];
-      const routes = routeSummary(events);
-      const overview = [
-        ['页面来源', task.source === 'demo' ? '快速体验' : task.source === 'test' ? '接口测试' : '外部 API'],
-        ['任务类型', task.task_type === 'reduce' ? '降 AI 改写' : 'AI 检测'],
-        ['输入规模', `${Number(task.char_count || 0).toLocaleString()} 字符`],
-        ['总耗时', fmtDuration(task.duration_ms)]
-      ];
-      const overviewHtml = overview.map(([key, value]) => `<div class="overview-item"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
-      const routeHtml = routes.map((route, index) => `${index ? '<span class="route-arrow">→</span>' : ''}<span class="route-chip">${escapeHtml(route)}</span>`).join('');
-      const eventsHtml = events.map(event => {
-        const chips = Object.entries(event.details || {}).filter(([, value]) => value !== null && value !== '' && value !== 'none').map(([key, value]) => {
-          const shown = valueLabels[String(value)] || (typeof value === 'boolean' ? (value ? '是' : '否') : value);
-          return `<span class="detail-chip">${escapeHtml(detailLabels[key] || key)} · ${escapeHtml(shown)}</span>`;
-        }).join('');
-        return `<div class="event ${escapeHtml(event.status)}"><span class="event-dot"></span><div class="event-title-row"><span class="event-title">${escapeHtml(eventLabels[event.step] || event.step)}</span><span class="event-time">+${fmtDuration(event.elapsed_ms)}</span></div><div class="event-code">${escapeHtml(event.step)}</div>${chips ? `<div class="event-details">${chips}</div>` : ''}</div>`;
-      }).join('');
-      $('#modalBody').innerHTML = `<div class="task-overview">${overviewHtml}</div><div class="route-summary"><span>实际执行路径</span><div class="route-chips">${routeHtml}</div></div><h3 class="timeline-title">完整步骤 · ${events.length} 条</h3><div class="timeline">${eventsHtml || '<div class="empty">暂无执行步骤</div>'}</div>`;
-    }
-
     function closeModal() { $('#detailModal').classList.remove('open'); }
 
     window.addEventListener('DOMContentLoaded', () => {
       executionLog = window.createExecutionLog({ eventLabels, detailLabels, valueLabels });
+      window.createTaskHistory({ eventLabels, detailLabels, valueLabels });
       window.demoTokenStore.subscribe(updateTokenStatus);
       $('#apiSource').value = CONFIG.apiSource;
       $('#modelInput').value = CONFIG.models[CONFIG.apiSource] || CONFIG.models.ollama;
@@ -735,5 +707,6 @@
     });
   </script>
   <script>__EXECUTION_LOG_SCRIPT__</script>
+  <script>__TASK_HISTORY_SCRIPT__</script>
 </body>
 </html>

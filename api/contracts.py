@@ -137,11 +137,15 @@ class TaskSummary(DocumentedResponse):
     error_code: str | None
     created_at: str
     updated_at: str
+    returned_at: str | None = Field(description="服务端完成并准备返回结果/错误的时间；执行中为 null。")
     duration_ms: int | None
 
 
 class TaskListResponse(DocumentedResponse):
     items: list[TaskSummary]
+    total: int = Field(description="当前权限及筛选条件下的全部保留任务数。")
+    can_view_all_tasks: bool = Field(description="是否使用管理员权限查看所有调用方的任务。")
+    retention_limit: int = Field(description="服务端配置的任务保留数量上限。")
 
 
 class TaskEvent(DocumentedResponse):

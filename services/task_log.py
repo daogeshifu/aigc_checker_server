@@ -279,39 +279,44 @@ def _task_row(row: sqlite3.Row) -> dict[str, Any]:
     item.pop("client_id", None)
     raw_summary = item.pop("result_summary", None)
     item["result"] = json.loads(raw_summary) if raw_summary else None
+    item["returned_at"] = item["updated_at"] if item["status"] != "running" else None
     return item
 
 
 def list_tasks(client_id: str | None, limit: int = 30) -> list[dict[str, Any]]:
+    return query_tasks(client_id, limit=limit)["items"]
+
+
+def query_tasks(
+    client_id: str | None,
+    *,
+    limit: int = 30,
+    offset: int = 0,
+    source: str | None = None,
+    task_type: str | None = None,
+    status: str | None = None,
+    search: str | None = None,
+) -> dict[str, Any]:
+    """Filter and paginate the entire retained history within the caller's scope."""
     _initialize()
     safe_limit = max(1, min(limit, TASK_LOG_MAX_RECORDS))
+    clauses, params = [], []
+    for column, value in (("client_id", client_id), ("source", source),
+                          ("task_type", task_type), ("status", status)):
+        if value is not None:
+            clauses.append(f"{column} = ?")
+            params.append(value)
+    if search:
+        clauses.append("instr(lower(task_id), lower(?)) > 0")
+        params.append(search)
+    where = " WHERE " + " AND ".join(clauses) if clauses else ""
     with _LOCK, _connect() as connection:
-        if client_id is None:
-            rows = connection.execute(
-                """
-                SELECT task_id, task_type, source, status, plan,
-                       requested_api_source, requested_model, char_count,
-                       result_summary, error_code, created_at, updated_at, duration_ms
-                FROM tasks
-                ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (safe_limit,),
-            ).fetchall()
-        else:
-            rows = connection.execute(
-                """
-                SELECT task_id, task_type, source, status, plan,
-                       requested_api_source, requested_model, char_count,
-                       result_summary, error_code, created_at, updated_at, duration_ms
-                FROM tasks
-                WHERE client_id = ?
-                ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (client_id, safe_limit),
-            ).fetchall()
-    return [_task_row(row) for row in rows]
+        total = connection.execute("SELECT COUNT(*) FROM tasks" + where, params).fetchone()[0]
+        rows = connection.execute(
+            "SELECT * FROM tasks" + where + " ORDER BY created_at DESC, task_id DESC LIMIT ? OFFSET ?",
+            [*params, safe_limit, max(0, offset)],
+        ).fetchall()
+    return {"items": [_task_row(row) for row in rows], "total": total}
 
 
 def _execution_summary(events: list[dict[str, Any]]) -> dict[str, Any]:

@@ -13,7 +13,7 @@ from api.contracts import ScanResponse, ReduceResponse, TaskListResponse, TaskDe
 
 from services.preprocess import clean_text
 from services.checker import API_SOURCE, new_task_id, run_check, run_reduce
-from services.task_log import fail_task, finish_task, get_task, list_tasks, record_task_event, start_task
+from services.task_log import TASK_LOG_MAX_RECORDS, fail_task, finish_task, get_task, query_tasks, record_task_event, start_task
 from services.model_client import DETECTION_PROVIDER, default_model
 from services.probability_client import PROBABILITY_ENABLED
 
@@ -206,6 +206,9 @@ async def scan_document(request: ScanRequest, auth_context: dict = Security(_ver
                 "ai_probability": result.get("ai_probability"),
                 "confidence": result.get("confidence"),
                 "review_used": result.get("review", {}).get("used", False),
+                "assessment_status": result.get("assessment_status"),
+                "warnings": result.get("warnings", []),
+                "probability_status": result.get("probability", {}).get("status"),
             },
         )
         return result
@@ -276,6 +279,8 @@ async def reduce_document(request: ScanRequest, auth_context: dict = Security(_v
                 "ai_probability": result.get("ai_probability"),
                 "ai_reduced_probability": result.get("ai_reduced_probability"),
                 "quality_score": result.get("quality_score"),
+                "detection_status_before": result.get("detection_status_before"),
+                "detection_status_after": result.get("detection_status_after"),
             },
         )
         finish_task(
@@ -285,6 +290,8 @@ async def reduce_document(request: ScanRequest, auth_context: dict = Security(_v
                 "ai_probability": result.get("ai_probability"),
                 "ai_reduced_probability": result.get("ai_reduced_probability"),
                 "quality_score": result.get("quality_score"),
+                "detection_status_before": result.get("detection_status_before"),
+                "detection_status_after": result.get("detection_status_after"),
             },
         )
         return result
@@ -304,6 +311,11 @@ async def reduce_document(request: ScanRequest, auth_context: dict = Security(_v
             responses={200: {"model": TaskListResponse}, **error_responses()})
 async def task_history(
     limit: int = Query(default=200, ge=1, le=200, description="返回条数上限，实际条数受服务端任务保留数量限制。"),
+    offset: int = Query(default=0, ge=0, description="分页偏移量，可遍历全部保留的任务。"),
+    source: Literal["demo", "test", "api"] | None = Query(default=None),
+    task_type: Literal["scan", "reduce"] | None = Query(default=None),
+    status: Literal["running", "success", "failed"] | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=100, description="按任务 ID 搜索。"),
     _auth_context: dict = Security(_verify_token),
 ):
     """按创建时间倒序返回最近任务的脱敏摘要，不包含原文、完整检测报告或改写内容。
@@ -311,7 +323,12 @@ async def task_history(
     普通/会员 Token 仅能查询自己的任务；管理 API_TOKEN 可查询全部任务。
     """
     client_id = None if _auth_context["can_view_all_tasks"] else _auth_context["client_id"]
-    return {"items": list_tasks(client_id=client_id, limit=limit)}
+    return {
+        **query_tasks(client_id, limit=limit, offset=offset, source=source,
+                      task_type=task_type, status=status, search=search),
+        "can_view_all_tasks": _auth_context["can_view_all_tasks"],
+        "retention_limit": TASK_LOG_MAX_RECORDS,
+    }
 
 
 @router.get("/tasks/{task_id}", tags=["任务日志"], summary="查询任务执行轨迹与模型调用结果",
