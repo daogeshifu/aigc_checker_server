@@ -9,7 +9,7 @@ load_dotenv()  # 必须在其他业务模块 import 前执行
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
-from api.detect import router as detect_router
+from api.detect import router as detect_router, api_description
 from services.checker import API_SOURCE, AZURE_DEFAULT_MODEL, OLLAMA_DEFAULT_MODEL, OPENROUTER_DEFAULT_MODEL, close_azure_client
 
 
@@ -27,7 +27,10 @@ async def lifespan(app: FastAPI):
         await close_azure_client()
 
 
-app = FastAPI(title="AIGC Checker Engine", version="1.2", lifespan=lifespan)
+app = FastAPI(title="AIGC Checker Engine", version="2.1.0", description=api_description(), lifespan=lifespan,
+              openapi_tags=[{"name": "检测", "description": "文本风险分、原文实测指标与 Azure 条件复核。"},
+                            {"name": "改写", "description": "Pro 改写、前后复检与回滚保护。"},
+                            {"name": "任务日志", "description": "按访问 Token 隔离的脱敏任务记录与执行进度。"}])
 app.include_router(detect_router, prefix="/api")
 
 _DEMO_PAGE = Path(__file__).with_name("web") / "demo.html"
@@ -62,22 +65,22 @@ def _render_demo_page(initial_view: str = "demo") -> str:
     return html
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def get_demo_page():
     return HTMLResponse(content=_render_demo_page("demo"), headers={"Cache-Control": "no-store"})
 
 
-@app.get("/demo", response_class=HTMLResponse)
+@app.get("/demo", response_class=HTMLResponse, include_in_schema=False)
 async def get_demo_alias():
     return HTMLResponse(content=_render_demo_page("demo"), headers={"Cache-Control": "no-store"})
 
 
-@app.get("/test", response_class=HTMLResponse)
+@app.get("/test", response_class=HTMLResponse, include_in_schema=False)
 async def get_test_page():
     return HTMLResponse(content=_render_demo_page("test"), headers={"Cache-Control": "no-store"})
 
 
-@app.get("/tasks", response_class=HTMLResponse)
+@app.get("/tasks", response_class=HTMLResponse, include_in_schema=False)
 async def get_tasks_page():
     html = _TASKS_PAGE.read_text(encoding="utf-8").replace(
         "__DAILY_TOKEN_SCRIPT__", _TOKEN_SCRIPT.read_text(encoding="utf-8")

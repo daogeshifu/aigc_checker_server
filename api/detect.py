@@ -7,17 +7,21 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from api.contracts import ScanResponse, ReduceResponse, TaskListResponse, TaskDetailResponse, error_responses
 
 from services.preprocess import clean_text
 from services.checker import API_SOURCE, new_task_id, run_check, run_reduce
 from services.task_log import fail_task, finish_task, get_task, list_tasks, record_task_event, start_task
+from services.model_client import DETECTION_PROVIDER, default_model
+from services.probability_client import PROBABILITY_ENABLED
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_security = HTTPBearer()
+_security = HTTPBearer(description="填写本项目访问 Token，不是百炼/Azure API Key。Free 仅检测；Pro 支持检测、改写及条件复核；API_TOKEN 管理员还可查看全部任务。")
 _API_TOKEN = os.getenv("API_TOKEN") or "aigcchecker"
 _FREE_API_TOKENS = {token.strip() for token in os.getenv("FREE_API_TOKENS", "").split(",") if token.strip()}
 _PRO_API_TOKENS = {token.strip() for token in os.getenv("PRO_API_TOKENS", "").split(",") if token.strip()}
@@ -79,12 +83,38 @@ def _verify_token(credentials: HTTPAuthorizationCredentials = Security(_security
 
 
 class ScanRequest(BaseModel):
-    content: str
-    model: Optional[str] = None
-    api_source: str = API_SOURCE
-    request_source: Literal["demo", "test", "api"] = "api"
+    content: str = Field(description="待检测/改写原文。清洗后至少 50 个字符；最大长度按 strip 后文本及套餐配置检查。")
+    model: Optional[str] = Field(default=None, description="可选 Qwen 模型名；仅 api_source 与服务器实际 DETECTION_PROVIDER 一致时覆盖默认模型。不会选择 Azure 复核模型。")
+    api_source: str = Field(default=API_SOURCE, description="兼容参数，不能切换实际提供方。服务器通过 DETECTION_PROVIDER 选择 ollama/bailian；填写 azure/openrouter 也不会改变主检测路由。省略 model 可使用服务器默认模型。")
+    request_source: Literal["demo", "test", "api"] = Field(default="api", description="仅用于任务来源标记，不改变权限或检测流程。")
     # Lets the caller follow its exact task while the synchronous POST is running.
-    request_id: UUID | None = None
+    request_id: UUID | None = Field(default=None, description="可选唯一 UUID，便于在同步 POST 执行中轮询任务。task_id=scan-/reduce-加 UUID 的32位hex；重复使用返回409，不覆盖旧任务。")
+
+    model_config = {"json_schema_extra": {"examples": [{"content": (
+        "今天下午我整理了上周的工作记录，先核对客户反馈，再把遗漏的信息补进表格。"
+        "同事发来修改意见后，我发现两处数字需要重新确认，因此决定明天核实后再发给客户。"
+    ), "request_source": "api"}]}}
+
+
+def api_description() -> str:
+    return f"""文本 AI 风格检测与改写接口。
+
+### 当前服务配置
+- 主检测与表达扰动（由 DETECTION_PROVIDER 配置）：**{DETECTION_PROVIDER}**，默认模型 **{default_model()}**。请求中的 api_source 不能切换服务器路由。
+- 原文概率测量：**{'已启用' if PROBABILITY_ENABLED else '未启用'}**；是否成功看 probability.status。
+- Free 最大 {_FREE_MAX_CHARS} 字符；Pro/管理员最大 {_PRO_MAX_CHARS} 字符；清洗后至少 50 字符。
+
+### 分数与测量值
+- risk_score 为 0～100 的未校准 AI 风格风险分。ai_probability 是相同分数的历史字符串字段，**不是 AI 来源概率或 AI 内容占比**。
+- 分块通常采用 70% Qwen 判断 + 30% 文本统计，再做文体/短文本修正，全文按分块长度加权。
+- 短文本/列表可能跳过模型；模型失败后统计回退。HTTP 200 不保证模型成功，检查 judge_mode、warnings 和任务轨迹。
+- 独立评分服务计算原文 NLL/PPL；disabled/unavailable 时为 null，当前不参与风险分。Burstiness 是句长波动统计；**Binoculars 尚未实现**。
+- Pro 条件复核只调用 Azure；OpenRouter 仅保留在语义改写兜底链路。
+
+### 调用方式
+点击 Authorize 填写本项目访问 Token。POST /scan、/reduce 为同步接口；长文本/CPU 评分可能耗时较长。
+可提供唯一 request_id，同时 GET /api/tasks/{{task_id}} 轮询脱敏进度。任务按 Token 隔离，管理员可查看全部任务。
+"""
 
 
 def _start_request_task(kind: str, request: ScanRequest, auth: dict, char_count: int) -> str:
@@ -114,12 +144,18 @@ def _log(tag: str, task_id: str, request: ScanRequest, text_len: int) -> None:
     )
 
 
-@router.post("/scan")
+@router.post("/scan", tags=["检测"], summary="检测文本 AI 风格风险",
+             responses={200: {"model": ScanResponse, "description": "检测已返回；模型是否成功调用、是否证据不足需查看对应字段。"}, **error_responses(task=True)})
 async def scan_document(request: ScanRequest, auth_context: dict = Security(_verify_token)):
-    """AI 内容检测接口，对输入文本进行多维度分析并返回 AI 概率及详细报告。
+    """清洗 → 语言/文体识别 → 统计特征 → 分块 Qwen 判断 → 评分融合 → 可选原文概率测量 → 可选 Azure 复核。
 
-    - 文本长度需在 50 ~ max_chars 之间，否则返回 400
-    - ValueError 对应引擎返回格式异常，统一映射为 502
+    - 实际模型提供方由服务器 `DETECTION_PROVIDER=ollama|bailian` 决定。
+    - Free/Pro 均可检测，字数上限由套餐决定。
+    - `judge_mode=qwen` 表示有效模型判断；`heuristic_skip` 表示按规则跳过；`heuristic_fallback` 表示模型失败后回退。
+    - `probability.status` 区分 `disabled`、`measured`、`unavailable`；原文 PPL 不参与风险分，Binoculars 为 null。
+    - Pro 且开启远程复核时，低置信度、40～65 边界分，或符合保守文体条件可触发 Azure；失败不转 OpenRouter。
+    - 本地置信度低时按60%本地+40%复核融合，其他复核按72%+28%；复核仅修改文档结论。
+    - 低置信度返回 `Insufficient Evidence`，数值仍仅供风险参考。
     """
     text = request.content.strip()
     # 最小长度限制：过短的文本无法提取有效特征
@@ -185,12 +221,18 @@ async def scan_document(request: ScanRequest, auth_context: dict = Security(_ver
         raise HTTPException(status_code=500, detail=f"检测引擎服务异常: {str(exc)}", headers={"X-Task-ID": task_id})
 
 
-@router.post("/reduce")
+@router.post("/reduce", tags=["改写"], summary="改写文本并执行前后复检",
+             responses={200: {"model": ReduceResponse, "description": "返回最终保留文本及前后风险分；rewrite=false 可表示失败或回滚。"}, **error_responses(task=True, forbidden=True)})
 async def reduce_document(request: ScanRequest, auth_context: dict = Security(_verify_token)):
-    """降 AI 改写接口，对高 AI 概率文本进行改写并返回改写前后的概率对比。
+    """仅 Pro/管理员可用；Free 返回403，文本长度限制同检测接口。
 
-    - 仅 Pro 套餐可用（can_reduce=True），Free 套餐返回 403
-    - 文本长度限制同 /scan 接口
+    原文完整检测 → Azure 语义改写（失败时 OpenRouter 兜底）→ 按服务器提供方调用 Ollama/百炼表达扰动 → 本地规则调整 → 完整复检 → 质量评估及回滚保护。
+
+    - 两次检测各自可能测量原文概率及触发 Azure 条件复核；语义改写失败时跳过后续扰动，仍执行复检。
+    - 改写后风险分未下降时保留原文，`rewrite=false`。
+    - 前后 `ai_probability` 字段均为风险分，不是来源概率。
+    - `model=light|moderate|deep` 是改写处理等级，不是实际模型名称。
+    - 当前响应返回改写和分数摘要，不包含完整 chunks/metrics/probability；过程细节通过 task_id 查询。
     """
     text = request.content.strip()
     if len(clean_text(text)) < 50:
@@ -258,19 +300,30 @@ async def reduce_document(request: ScanRequest, auth_context: dict = Security(_v
         raise HTTPException(status_code=500, detail=f"降 AI 引擎服务异常: {str(exc)}", headers={"X-Task-ID": task_id})
 
 
-@router.get("/tasks")
+@router.get("/tasks", tags=["任务日志"], summary="查询任务列表",
+            responses={200: {"model": TaskListResponse}, **error_responses()})
 async def task_history(
-    limit: int = Query(default=200, ge=1, le=200),
+    limit: int = Query(default=200, ge=1, le=200, description="返回条数上限，实际条数受服务端任务保留数量限制。"),
     _auth_context: dict = Security(_verify_token),
 ):
-    """返回最近任务的脱敏摘要，不包含任何用户原文或改写内容。"""
+    """按创建时间倒序返回最近任务的脱敏摘要，不包含原文、完整检测报告或改写内容。
+
+    普通/会员 Token 仅能查询自己的任务；管理 API_TOKEN 可查询全部任务。
+    """
     client_id = None if _auth_context["can_view_all_tasks"] else _auth_context["client_id"]
     return {"items": list_tasks(client_id=client_id, limit=limit)}
 
 
-@router.get("/tasks/{task_id}")
+@router.get("/tasks/{task_id}", tags=["任务日志"], summary="查询任务执行轨迹与模型调用结果",
+            responses={200: {"model": TaskDetailResponse}, **error_responses(missing=True)})
 async def task_detail(task_id: str, _auth_context: dict = Security(_verify_token)):
-    """返回单个任务的完整执行轨迹；每一步仅暴露运行元数据。"""
+    """查询进行中或已结束任务，适合轮询执行进度。权限与任务列表一致，不可见/过期任务返回404。
+
+    - events 为脱敏步骤，elapsed_ms 是从任务开始的累计时间。
+    - execution_summary.local 为主 Qwen 判别器的兼容字段，provider 可为 bailian 或 ollama，不代表一定在本地运行。
+    - 调用次数区分尝试、成功、失败和待确认；一次判断内部可能有格式重试，不等同于底层 HTTP 请求数。
+    - 服务端不保存原文/改写文本；任务状态 success 表示接口完成，不代表检测来源判断一定准确或所有模型调用均成功。
+    """
     client_id = None if _auth_context["can_view_all_tasks"] else _auth_context["client_id"]
     task = get_task(task_id, client_id=client_id)
     if not task:

@@ -451,6 +451,10 @@ IS_PROD=y ./start.sh
 - 任务记录：<http://127.0.0.1:8027/tasks>
 - Swagger 文档：<http://127.0.0.1:8027/docs>
 
+`/docs` 的接口版本为 `2.1.0`，包含当前服务器提供方、套餐权限、检测/改写流程、任务轮询、响应字段及错误码。`risk_score` / `ai_probability` 表示未校准的风险分；PPL 为可选实测指标，当前不参与评分，Binoculars 尚未实现。
+
+更新接口文档代码后执行 `sudo bash manage.sh update api`，再刷新 `/docs`；仅执行 `reload api` 不会加载源码变化。
+
 未配置 `API_TOKEN` 时默认 Token 为 `aigcchecker`。生产环境请在 `.env` 中替换为高熵随机 Token。
 
 ## 线上 Docker 部署
