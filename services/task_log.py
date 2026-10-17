@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from services.task_progress import task_progress
+
 
 TASK_LOG_DB_PATH = Path(os.getenv("TASK_LOG_DB_PATH", "data/task_logs.db"))
 TASK_LOG_MAX_RECORDS = max(20, int(os.getenv("TASK_LOG_MAX_RECORDS", "200")))
@@ -508,4 +510,5 @@ def get_task(task_id: str, client_id: str | None) -> dict[str, Any] | None:
         for event in events
     ]
     result["execution_summary"] = _execution_summary(result["events"])
+    result["result"] = task_progress(result)
     return result

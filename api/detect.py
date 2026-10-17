@@ -113,7 +113,8 @@ def api_description() -> str:
 
 ### 调用方式
 点击 Authorize 填写本项目访问 Token。POST /scan、/reduce 为同步接口；长文本/CPU 评分可能耗时较长。
-可提供唯一 request_id，同时 GET /api/tasks/{{task_id}} 轮询脱敏进度。任务按 Token 隔离，管理员可查看全部任务。
+可提供唯一 request_id，同时 GET /api/tasks/{{task_id}} 轮询；result.stage/progress/message 返回阶段、进度及展示文案。
+status 为 success/failed 时停止轮询，成功时 result 同时包含脱敏业务结果摘要。任务按 Token 隔离，管理员可查看全部任务。
 """
 
 
@@ -331,11 +332,15 @@ async def task_history(
     }
 
 
-@router.get("/tasks/{task_id}", tags=["任务日志"], summary="查询任务执行轨迹与模型调用结果",
+@router.get("/tasks/{task_id}", tags=["任务日志"], summary="轮询任务进度、结果摘要与执行轨迹",
             responses={200: {"model": TaskDetailResponse}, **error_responses(missing=True)})
 async def task_detail(task_id: str, _auth_context: dict = Security(_verify_token)):
     """查询进行中或已结束任务，适合轮询执行进度。权限与任务列表一致，不可见/过期任务返回404。
 
+    - 顶层结构及 status=running/success/failed 保持一致，result 在各状态下均返回阶段、进度和展示文案。
+    - result.stage/progress/message 可直接驱动加载动画；分块计数按当前 scan_phase 统计，改写复检时重新计数，整体进度不回退。
+    - progress 为真实阶段/分块估算，非耗时百分比；运行中最多99，仅成功为100。success/failed 时停止轮询。
+    - 成功时 result 保留原有脱敏摘要；失败时 error_code 标识错误，result.message 返回可展示提示，events 保留排障轨迹。
     - events 为脱敏步骤，elapsed_ms 是从任务开始的累计时间。
     - execution_summary.local 为主 Qwen 判别器的兼容字段，provider 可为 bailian 或 ollama，不代表一定在本地运行。
     - 调用次数区分尝试、成功、失败和待确认；一次判断内部可能有格式重试，不等同于底层 HTTP 请求数。

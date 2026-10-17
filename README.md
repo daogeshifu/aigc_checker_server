@@ -308,6 +308,7 @@ Content-Type: application/json
 | `model` | string | 否 | 请求模型名 |
 | `api_source` | string | 否 | 兼容字段：`ollama / azure / openrouter` |
 | `request_source` | string | 否 | 任务来源：`demo / test / api`，默认 `api` |
+| `request_id` | UUID string | 否 | 每次请求生成唯一 UUID，可在同步 POST 执行中按 `scan-/reduce-` + UUID 去掉连字符后的32位 hex 轮询；重复使用返回409 |
 
 返回字段核心包括：
 
@@ -354,11 +355,58 @@ curl -X POST "http://127.0.0.1:8027/api/scan" \
 ### 任务记录接口
 
 - `GET /api/tasks`：分页查询当前 Token 可见的任务摘要；支持 `limit/offset`、来源/类型/状态/Task ID 筛选，返回 `items/total/can_view_all_tasks/retention_limit`
-- `GET /api/tasks/{task_id}`：返回单个任务的完整执行步骤
+- `GET /api/tasks/{task_id}`：轮询单个任务的阶段、业务结果摘要和完整执行步骤
 
 `API_TOKEN` 作为管理 Token，可查看 Demo、测试页与第三方 API 的全部任务；`FREE_API_TOKENS` 和 `PRO_API_TOKENS` 仍按 Token 隔离，只能查看自己的记录。任务日志只保存步骤、模型、分块数量、统计分数、状态和耗时等运行元数据。`content`、`text`、`prompt`、改写前后文本等字段会被强制脱敏。
 
 Demo 和接口测试页面底部展示核心步骤、返回结果、返回时间与耗时，执行中每两秒更新。「全部任务日志」覆盖 Demo、测试页和外部 API 任务，支持分页筛选、每五秒刷新和执行过程查看。服务端默认保留最近 200 条，由 `TASK_LOG_MAX_RECORDS` 配置。任务摘要/详情的 `returned_at` 表示服务端完成并准备返回的时间，执行中为 `null`。[使用与更新部署说明](docs/DEMO_EXECUTION_LOGS.md)。
+
+业务系统可每 1～2 秒调用 `GET /api/tasks/{task_id}`，用顶层 `status` 判断是否继续轮询，用 `result` 驱动加载动画。详情接口保留原有顶层结构，`result` 在执行中和失败时也返回对象，成功时同时保留原有分数、置信度、改写结果标记等脱敏摘要。列表接口仍返回原有紧凑摘要。
+
+| 字段 | 业务处理方式 |
+|---|---|
+| `status` | `running` 继续轮询；`success` 展示结果；`failed` 展示错误并停止轮询 |
+| `result.stage` | 当前阶段代码，见下表；成功为 `completed`，失败为 `failed` |
+| `result.progress` | 0～100 的整体进度，按真实阶段和完成分块估算，单调不减；执行中最多99，成功为100，失败保留失败前进度；不代表耗时比例 |
+| `result.message` | 可直接展示的阶段文案或失败提示 |
+| `result.scan_phase` | 检测轮次：`primary_scan` 单次检测、`original_scan` 改写前检测、`reduced_scan` 改写后复检；改写及质量评估时为 `null` |
+| `result.completed_chunks / total_chunks` | 当前轮次已完成/总分块数；复检重新计数，整体进度不回退；尚未分块或不在检测轮次时为0 |
+| `error_code` | 失败时的错误代码，`engine_parse_error` 为引擎格式错误，`engine_error` 为主流程异常 |
+
+| `result.stage` | 阶段 |
+|---|---|
+| `accepted` | 已受理，等待处理 |
+| `preprocessing` | 预处理、提取特征或准备复检 |
+| `detecting` | 按分块检测 |
+| `probability` | 测量原文概率指标（启用时） |
+| `aggregating` | 汇总检测结果 |
+| `reviewing` | 条件复核（触发时） |
+| `rewriting` | 语义改写 |
+| `perturbing` | 调整文本表达 |
+| `rule_adjusting` | 优化文本细节 |
+| `evaluating` | 质量评估与回滚保护 |
+| `finalizing` | 整理返回结果 |
+| `completed / failed` | 成功 / 失败终态 |
+
+轮询返回示例（仅展示业务相关字段，其余原有时间戳、事件及调用汇总字段仍返回）：
+
+```json
+{
+  "task_id": "scan-0123456789abcdef0123456789abcdef",
+  "status": "running",
+  "result": {
+    "stage": "detecting",
+    "progress": 42,
+    "message": "正在分析文本（已完成 1/2 个分块）",
+    "scan_phase": "primary_scan",
+    "completed_chunks": 1,
+    "total_chunks": 2
+  },
+  "error_code": null
+}
+```
+
+POST `/api/scan`、`/api/reduce` 继续同步返回完整业务结果。轮询用于展示进度和脱敏结果摘要，不返回原文、完整报告或改写文本。POST 执行前即可根据唯一 `request_id` 算出 `task_id`；任务尚未创建时可能短暂返回404，任务创建后按上述状态轮询。模型调用失败后统计回退、改写未改善后保留原文等场景，如果主流程正常完成，仍为 `success`，应结合摘要字段和 `result.message` 展示实际结果。
 
 ## 环境配置
 

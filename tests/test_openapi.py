@@ -39,6 +39,11 @@ class OpenApiTests(unittest.TestCase):
             self.assertIn('X-Task-ID', operation['responses']['500']['headers'])
         self.assertIn('403', schema['paths']['/api/reduce']['post']['responses'])
         self.assertIn('404', schema['paths']['/api/tasks/{task_id}']['get']['responses'])
+        progress = schema['components']['schemas']['TaskProgressResult']
+        self.assertTrue({'stage', 'progress', 'message', 'scan_phase', 'completed_chunks', 'total_chunks'}
+                        <= set(progress['required']))
+        self.assertEqual(schema['components']['schemas']['TaskDetailResponse']['properties']['result']['$ref'],
+                         '#/components/schemas/TaskProgressResult')
 
     def test_request_examples_do_not_pin_a_model_or_reuse_a_request_uuid(self):
         schema = app.openapi()['components']['schemas']['ScanRequest']

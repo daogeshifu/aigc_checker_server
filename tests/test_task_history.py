@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
 from api import detect
-from api.contracts import TaskListResponse
+from api.contracts import TaskListResponse, TaskDetailResponse
 from main import app
 from services import task_log
 
@@ -127,6 +127,39 @@ class TaskHistoryTests(unittest.TestCase):
         self.assertEqual(item['result']['detection_status_before'], 'insufficient_evidence')
         self.assertNotIn('reduced', item['result'])
         self.assertIsNotNone(item['returned_at'])
+
+    def test_polling_keeps_same_envelope_for_accepted_running_success_and_failure(self):
+        self.seed('scan-live', status='running')
+        def poll():
+            response = self.client.get('/api/tasks/scan-live', headers=self.headers('history-a'))
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            TaskDetailResponse.model_validate(payload)
+            return payload
+
+        accepted = poll()
+        self.assertEqual(accepted['result']['stage'], 'accepted')
+        self.assertEqual(accepted['result']['progress'], 0)
+        task_log.record_task_event('scan-live', 'scan.chunking.finish', details={'chunks': 2})
+        task_log.record_task_event('scan-live', 'scan.chunk.score', details={'chunk_id': 1, 'text': 'private input'})
+        running = poll()
+        self.assertEqual(running['result']['stage'], 'detecting')
+        self.assertEqual(running['result']['completed_chunks'], 1)
+        self.assertNotIn('private input', str(running))
+        self.assertEqual(poll(), running)
+        task_log.finish_task('scan-live', {'label': 'Mixed', 'ai_probability': '42.00'})
+        success = poll()
+        self.assertEqual(success['result']['progress'], 100)
+        self.assertEqual(success['result']['ai_probability'], '42.00')
+        # The list endpoint still returns compact result summaries.
+        listing = self.client.get('/api/tasks', headers=self.headers('history-a')).json()['items'][0]
+        self.assertEqual(listing['result'], {'label': 'Mixed', 'ai_probability': '42.00'})
+        self.seed('scan-failed', status='failed')
+        failed = self.client.get('/api/tasks/scan-failed', headers=self.headers('history-a')).json()
+        self.assertEqual(failed['result']['stage'], 'failed')
+        self.assertTrue(failed['result']['message'])
+        for payload in (running, success, failed):
+            self.assertEqual(set(payload), set(accepted))
 
 
 if __name__ == '__main__':

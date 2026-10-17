@@ -72,10 +72,14 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
                 client = httpx.AsyncClient(transport=httpx.MockTransport(
                     lambda req: httpx.Response(200, json=payload)))
                 with patch.object(probability_client, "PROBABILITY_ENABLED", True), \
-                     patch.object(probability_client.httpx, "AsyncClient", return_value=client):
-                    result = await probability_client.measure_probability("original text")
+                     patch.object(probability_client.httpx, "AsyncClient", return_value=client), \
+                     patch.object(probability_client, "record_task_event") as events:
+                    result = await probability_client.measure_probability("original text", task_id="scan-probability")
                 self.assertEqual(result["status"], status)
                 self.assertFalse(result["used_in_risk_score"])
+                self.assertEqual(events.call_args_list[0].args, ("scan-probability", "scan.probability.start"))
+                self.assertEqual(events.call_args_list[-1].args[1],
+                                 "scan.probability.finish" if status == "measured" else "scan.probability.failure")
 
     async def test_busy_or_timeout_remains_unavailable(self):
         def timeout(request):

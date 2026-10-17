@@ -97,6 +97,13 @@ class ApiTests(unittest.TestCase):
                     trace = client.get('/api/tasks/' + task_id)
                     self.assertEqual(trace.status_code, 200)
                     self.assertEqual(trace.json()['status'], 'running')
+                    progress = trace.json()['result']
+                    self.assertEqual(progress['stage'], 'detecting')
+                    self.assertEqual(progress['completed_chunks'], 0)
+                    self.assertGreater(progress['total_chunks'], 0)
+                    self.assertGreater(progress['progress'], 0)
+                    self.assertLess(progress['progress'], 100)
+                    self.assertIn('正在分析', progress['message'])
                     self.assertIn('judge.route.qwen', [event['step'] for event in trace.json()['events']])
                     self.assertEqual(trace.json()['execution_summary']['local']['successes'], 0)
                 finally:
@@ -104,6 +111,9 @@ class ApiTests(unittest.TestCase):
                 self.assertEqual(pending.result(timeout=3).json()['task_id'], task_id)
             original = client.get('/api/tasks/' + task_id).json()
             self.assertEqual(original['status'], 'success')
+            self.assertEqual(original['result']['stage'], 'completed')
+            self.assertEqual(original['result']['progress'], 100)
+            self.assertIn('ai_probability', original['result'])
             self.assertGreater(original['execution_summary']['local']['successes'], 0)
             app.dependency_overrides[_verify_token] = lambda: {
                 'plan':'free', 'can_remote_review':False, 'can_reduce':False,
@@ -132,7 +142,10 @@ class ApiTests(unittest.TestCase):
                         trace = client.get('/api/tasks/' + task_id).json()
                         self.assertEqual(trace['status'], 'failed')
                         self.assertEqual(trace['events'][-1]['status'], 'failed')
-                        self.assertIsNone(trace['result'])
+                        self.assertEqual(trace['result']['stage'], 'failed')
+                        self.assertLess(trace['result']['progress'], 100)
+                        self.assertIn('请重试', trace['result']['message'])
+                        self.assertEqual(trace['error_code'], 'engine_parse_error' if status == 502 else 'engine_error')
 
     def test_invalid_request_id_does_not_create_a_task(self):
         with TestClient(app) as client:

@@ -19,6 +19,7 @@ PROBABILITY_TIMEOUT = float(os.getenv("PROBABILITY_TIMEOUT", "600"))
 async def measure_probability(text: str, *, task_id: str | None = None) -> dict:
     if not PROBABILITY_ENABLED:
         return {"status": "disabled", "used_in_risk_score": False}
+    record_task_event(task_id, "scan.probability.start", status="running")
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(PROBABILITY_TIMEOUT, connect=5)) as client:
             response = await client.post(f"{PROBABILITY_BASE_URL}/score", json={"text": text})

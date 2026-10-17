@@ -128,7 +128,7 @@ class TaskSummary(DocumentedResponse):
     task_id: str
     task_type: Literal["scan", "reduce"]
     source: Literal["demo", "test", "api"]
-    status: Literal["running", "success", "failed"]
+    status: Literal["running", "success", "failed"] = Field(description="任务生命周期状态；详情中 result.stage/progress/message 随真实执行阶段变化，success/failed 为终态。")
     plan: Literal["free", "pro"]
     requested_api_source: str | None
     requested_model: str | None
@@ -157,7 +157,18 @@ class TaskEvent(DocumentedResponse):
     elapsed_ms: int = Field(description="从任务开始到该事件的累计时间，不是单步耗时。")
 
 
+class TaskProgressResult(DocumentedResponse):
+    stage: Literal["accepted", "preprocessing", "detecting", "probability", "aggregating", "reviewing",
+                   "rewriting", "perturbing", "rule_adjusting", "evaluating", "finalizing", "completed", "failed"]
+    progress: int = Field(ge=0, le=100, description="按真实执行阶段和已完成分块估算的整体进度，单调不减；运行中最多99，成功为100，失败保留失败前进度。不是耗时百分比。")
+    message: str = Field(description="当前阶段的业务展示文案，可直接用于加载动画。")
+    scan_phase: Literal["primary_scan", "original_scan", "reduced_scan"] | None = Field(description="当前检测轮次；改写/质量评估阶段为 null。")
+    completed_chunks: int = Field(ge=0, description="当前检测轮次已完成的分块数，按 chunk_id 去重。")
+    total_chunks: int = Field(ge=0, description="当前检测轮次分块总数，尚未分块或不在检测轮次时为0。")
+
+
 class TaskDetailResponse(TaskSummary):
+    result: TaskProgressResult = Field(description="各状态均返回进度和展示文案；成功时同时保留原有脱敏业务结果摘要。不包含完整检测报告或改写文本。")
     events: list[TaskEvent]
     execution_summary: dict[str, Any] = Field(description="local 为历史字段名，表示主 Qwen 判别器；provider 可为 bailian/ollama。third_party 为 Azure 复核/语义改写等辅助调用汇总；detection_modes 区分判别、统计及回退。")
 
