@@ -21,16 +21,34 @@
 sudo bash scripts/deploy_ollama.sh
 ```
 
-脚本只创建 `aigc-ollama` 容器、`aigc-models` 网络、持久化模型卷，并拉取 `qwen3:4b`。默认限制 6 个 CPU、12GB 内存、1 路生成；不会重启检测项目，也不会访问付费模型 API。已有同名容器会复用，资源配置保留。若宿主机 11434 已有服务，先检查端口使用情况，再选择复用或调整新容器的主机端口；不要直接删除旧服务。
+脚本只部署 `aigc-ollama` 容器、`aigc-models` 网络、持久化模型卷，并拉取 `qwen3:4b`。它读取 Docker 守护进程实际可用的 CPU / 内存：CPU 默认留出 1 核、最多使用 6 核；内存默认使用一半并向下取整到 GiB、最多 12GiB；生成并发为 1。参数超出机器资源时会在部署前退出。已有同名容器会复用并更新资源上限，模型卷保留；内存加交换空间总上限设为内存上限的两倍，实际交换空间取决于宿主机配置。脚本不会重启检测项目，也不会访问付费模型 API。若宿主机 11434 已有服务，先检查端口使用情况，再选择复用或调整新容器的主机端口；不要直接删除旧服务。
 
-等价的首次手工操作如下（选脚本或手工其中一种）：
+对于当前 **4 核 / 16GiB** 服务器，建议明确使用 3 核、8GiB：
+
+```bash
+sudo env OLLAMA_DEPLOY_CPUS=3 OLLAMA_DEPLOY_MEMORY_GB=8 \
+  bash scripts/deploy_ollama.sh
+```
+
+这里的 `OLLAMA_DEPLOY_*` 是部署脚本环境变量；应用 `.env` 中的 `OLLAMA_NUM_THREAD` 控制推理线程，是另一项设置。实机报告内存略低于 16GiB 时，自动取一半可能得到 7GiB，显式指定 8GiB 仍可使用。
+
+旧脚本若报 `range of CPUs ... only 4 CPUs available`，是此前固定的 `--cpus 6` 超过实际核数。可先在服务器项目目录临时修正旧脚本，再重新执行：
+
+```bash
+sed -i.bak 's/--cpus 6 --memory 12g/--cpus 3 --memory 8g/' scripts/deploy_ollama.sh
+sudo bash scripts/deploy_ollama.sh
+```
+
+也可直接上传新版脚本后使用上述 `OLLAMA_DEPLOY_*` 参数。若之前已留下同名容器，新版脚本会先更新资源上限，再启动容器，无需删除模型数据。
+
+针对 4 核 / 16GiB 机器，首次手工操作如下（选脚本或手工其中一种）：
 
 ```bash
 sudo docker network create aigc-models
 sudo docker run -d \
   --name aigc-ollama \
   --restart unless-stopped \
-  --cpus 6 --memory 12g \
+  --cpus 3 --memory 8g --memory-swap 16g \
   --network aigc-models \
   -p 127.0.0.1:11434:11434 \
   -v aigc-ollama-models:/root/.ollama \
@@ -49,7 +67,7 @@ sudo docker exec aigc-ollama ollama pull qwen3:4b
 curl --fail-with-body http://127.0.0.1:11434/api/tags
 curl --fail-with-body --max-time 600 http://127.0.0.1:11434/api/generate \
   -H 'Content-Type: application/json' \
-  -d '{"model":"qwen3:4b","prompt":"只回复：OK","think":false,"stream":false,"options":{"num_thread":6,"num_ctx":2048,"num_predict":32}}'
+  -d '{"model":"qwen3:4b","prompt":"只回复：OK","think":false,"stream":false,"options":{"num_thread":3,"num_ctx":2048,"num_predict":32}}'
 ```
 
 第一个响应的模型列表应包含 `qwen3:4b`，第二个应有非空 `response`。若失败，先看 Ollama 日志，此时还不需要修改检测项目。
@@ -67,7 +85,7 @@ OLLAMA_BASE_URL=http://aigc-ollama:11434
 OLLAMA_DOCKER_NETWORK=aigc-models
 OLLAMA_MODEL=qwen3:4b
 OLLAMA_REWRITE_MODEL=qwen3:4b
-OLLAMA_NUM_THREAD=6
+OLLAMA_NUM_THREAD=3
 OLLAMA_TIMEOUT=600
 OLLAMA_MAX_CONCURRENCY=1
 SCAN_CHUNK_CONCURRENCY=1
@@ -107,6 +125,8 @@ sudo docker exec aigc-checker-server python -c \
 ## 真实 PPL 的后续接入
 
 Ollama 这一步解决现有模型判别调用。原文概率需要独立的 `cpu_scoring` 服务；其接入已做成可选项，默认关闭，失败时显式告警。没有标注数据时，PPL 不参与未经验证的 AI 风险分换算，Binoculars 尚未实现。
+
+当前 4 核 / 16GiB 机器先保持 `PROBABILITY_ENABLED=false`，验证 Ollama 的耗时和内存占用；下面两套模型服务同时常驻的示例按此前 8 核 / 32GiB 配置编写，不能直接照搬到当前服务器。
 
 要在原项目旁边单独增加 PPL 服务，可执行以下命令；它们不会重建检测项目，也不生成或切换 `.env.cpu`：
 
