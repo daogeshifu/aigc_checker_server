@@ -338,8 +338,8 @@
 
         <div class="advanced-panel">
           <div class="field">
-            <label for="apiSource">请求 API Source</label>
-            <select id="apiSource"><option value="ollama">ollama</option><option value="azure">azure</option><option value="openrouter">openrouter</option></select>
+            <label for="apiSource">当前检测提供方（服务器配置）</label>
+            <select id="apiSource" disabled><option value="ollama">本地 Ollama</option><option value="bailian">阿里云百炼 API</option></select>
           </div>
           <div class="field"><label for="modelInput">请求 Model</label><input id="modelInput" value="__DEFAULT_MODEL__"></div>
           <div class="route-hint">
@@ -419,7 +419,7 @@
     const CONFIG = {
       initialView: '__INITIAL_VIEW__',
       apiSource: '__API_SOURCE__',
-      models: { ollama: '__OLLAMA_DEFAULT_MODEL__', azure: '__AZURE_DEFAULT_MODEL__', openrouter: '__OPENROUTER_DEFAULT_MODEL__' }
+      models: { ollama: '__OLLAMA_DEFAULT_MODEL__', bailian: '__BAILIAN_DEFAULT_MODEL__', azure: '__AZURE_DEFAULT_MODEL__', openrouter: '__OPENROUTER_DEFAULT_MODEL__' }
     };
 
     const state = { view: CONFIG.initialView, mode: 'scan', loading: false, tasks: [], tokenValue: null };
@@ -443,7 +443,7 @@
       'scan.language.detect':'识别文本语言', 'scan.genre.detect':'识别文体类型',
       'scan.features.document':'切词并提取文档特征', 'scan.chunking.finish':'按句子完成智能分块',
       'scan.chunk.features':'提取分块统计特征', 'judge.route.heuristic':'跳过 Qwen，直接使用统计计算',
-      'judge.route.qwen':'调用本地 Qwen 判别', 'judge.qwen.finish':'Qwen 返回分块判断',
+      'judge.route.qwen':'调用 Qwen 判别', 'judge.qwen.finish':'Qwen 返回分块判断',
       'judge.qwen.fallback':'Qwen 不可用，回退统计计算', 'scan.chunk.score':'融合模型判断与统计特征并校正',
       'provider.azure.success':'Azure 调用成功', 'provider.azure.failure':'Azure 调用失败',
       'provider.openrouter.success':'OpenRouter 调用成功', 'provider.openrouter.failure':'OpenRouter 调用失败',
@@ -473,7 +473,7 @@
       rewrite:'发生改写', quality_score:'质量分', quality:'质量分', before:'改写前', after:'改写后', improvement:'下降幅度', applied:'已生效', stage:'步骤', target_model:'目标模型', steps:'流水线', reduced_chars:'改写字符数', error_type:'错误类型', fallback:'回退方式'
     };
     const valueLabels = {
-      primary_scan:'主检测', original_scan:'原文检测', reduced_scan:'改写后复检', sentence_spans:'按句子边界', statistics_only:'统计特征计算', ollama_qwen:'Ollama Qwen',
+      primary_scan:'主检测', original_scan:'原文检测', reduced_scan:'改写后复检', sentence_spans:'按句子边界', statistics_only:'统计特征计算', ollama_qwen:'Ollama Qwen', bailian_qwen:'百炼 Qwen',
       short_or_single_sentence:'短文本或单句', structured_chunk:'结构化分块', short_chunk:'短分块', detail_heavy_formal:'细节密集的正式文本', qwen_provider_error:'Qwen 服务异常',
       plan_disabled:'当前套餐不启用', review_disabled:'全局复核已关闭', not_needed:'本地结果已足够明确', low_confidence:'本地置信度较低', borderline_score:'分数处于边界区间', conservative_genre:'正式文体保守复核',
       character_weighted_average:'按分块字符数加权', semantic_rewrite:'深度语义重写', expression_perturb:'表达扰动', rule_injection:'规则注入'
@@ -542,8 +542,8 @@
     function renderRouteHint() {
       const source = $('#apiSource').value;
       $('#routeHint').textContent = state.mode === 'reduce'
-        ? `reduce 会先走 Ollama 检测，再按 Azure → OpenRouter 回退链路做语义改写，之后由本地 Qwen 扰动并复检。当前 ${source} 参数仅用于请求兼容。`
-        : `scan 的实际检测引擎固定为 Ollama；当分块信息充足时调用本地 Qwen，否则直接使用统计特征计算。当前请求参数为 ${source}。`;
+        ? `检测和表达扰动使用 ${source === 'bailian' ? '阿里云百炼' : '本地 Ollama'}，语义改写使用 Azure → OpenRouter 兜底；远程复核仅使用 Azure。`
+        : `检测提供方由服务器配置为 ${source === 'bailian' ? '阿里云百炼 API' : '本地 Ollama'}；短文本或结构化分块可跳过模型，远程复核仅使用 Azure。`;
     }
 
     function updateCount() {
@@ -650,7 +650,7 @@
         if (event.step === 'scan.preprocess.clean') push('文本清洗');
         if (event.step === 'scan.features.document') push('切词 / 特征');
         if (event.step === 'scan.chunking.finish') push('智能分块');
-        if (event.step === 'judge.route.qwen') push('Ollama Qwen');
+        if (event.step === 'judge.route.qwen') push(event.details?.provider === 'bailian' ? '百炼 Qwen' : 'Ollama Qwen');
         if (event.step === 'judge.route.heuristic') push('统计直算');
         if (event.step === 'provider.azure.call') push(`Azure ${event.details.deployment || ''}`.trim());
         if (event.step.includes('openrouter') && event.step.includes('call')) push(`OpenRouter ${event.details.model || ''}`.trim());

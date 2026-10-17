@@ -29,7 +29,7 @@
 
 ## 核心特性
 
-- 本地优先：`/api/scan` 主链路固定走 Ollama 本地检测
+- 可选提供方：`.env` 的 `DETECTION_PROVIDER=ollama|bailian` 统一选择本地 Ollama 或阿里云百炼，支持判断 JSON 与表达扰动
 - 真实特征：字符数、句长波动、词汇多样性、重复 n-gram、连接词密度等由 Python 实际计算
 - 分块检测：长文本不是整篇一次判，而是 chunk 级别分析后再聚合
 - 语言增强：区分 `zh` / `en` / `mixed`，英文采用独立的连接词、细节信号和词级 n-gram 重复率
@@ -46,10 +46,10 @@
 
 当前 `scan` 实际执行策略固定为：
 
-- 本地检测固定走 `Ollama`
-- 本地模型默认使用 `qwen3.5:9b`
+- 检测提供方由 `DETECTION_PROVIDER` 选择 Ollama 或百炼
+- Ollama 模型由 `OLLAMA_MODEL` 配置，百炼模型由 `BAILIAN_MODEL` 配置
 - 请求中的 `api_source` 保留为兼容参数
-- Pro 用户在低置信度或边界结果时可触发远程复核
+- Pro 用户在低置信度或边界结果时可触发 Azure 复核；OpenRouter 不参与复核
 
 ### `/api/reduce`
 
@@ -73,7 +73,9 @@ Client / Web / Laravel
  services/checker.py
         ├── preprocess.py   文本清洗 / 语言识别 / 文体识别 / 分块
         ├── features.py     真实特征工程
-        ├── judges.py       本地 Qwen 判别 / 启发式回退
+        ├── judges.py       Qwen 判别 / 启发式回退
+        ├── model_client.py Ollama / 百炼统一选择
+        ├── bailian_client.py 百炼 JSON 与文本生成
         ├── aggregate.py    chunk 评分融合 / 文档聚合
         ├── ollama_client.py
         ├── prompts.py
@@ -143,7 +145,7 @@ requirements.txt
 
 ### 3. 本地模型调用策略
 
-本地判别模型：`Ollama + qwen3.5:9b`
+判别模型由 `.env` 配置：`DETECTION_PROVIDER=ollama` 使用 `OLLAMA_MODEL`；`bailian` 使用 `BAILIAN_MODEL`。表达扰动也跟随该提供方。完整配置见 [统一管理说明](docs/DEPLOYMENT.md)。
 
 并不是所有 chunk 都一定调用本地模型。
 
@@ -400,6 +402,17 @@ IS_PROD=y ./start.sh
 
 ## 线上 Docker 部署
 
+已有业务 API、Ollama 并希望启用原文概率评分时，使用 [统一 Docker 管理入口](docs/DEPLOYMENT.md)：
+
+```bash
+sudo bash manage.sh up
+sudo bash manage.sh check --score
+```
+
+入口统一管理业务、Ollama 和可选评分容器；复用已有模型及 Token，按 Docker 资源自动分配配额。日常使用 `status`、`logs api`、`update api`，配置集中在 `.env` 和 `deploy.env`。已下载 `models/` 中的 GGUF 时无需重复下载。PPL 为实测指标，当前不参与风险评分。
+
+以下为只更新业务 API 的兼容入口。
+
 本地仍使用 `./start.sh`。线上在服务器的项目目录执行 `./disploy.sh`，需要 Docker Engine 20.10+；优先使用 Docker Compose 插件，未安装插件或只有旧版 `docker-compose` v1 时自动使用纯 Docker。
 
 首次部署：
@@ -497,7 +510,7 @@ curl --fail http://127.0.0.1:8027/health
 
 ## Ubuntu CPU 部署：8 核 / 32GB
 
-已经部署本项目时，优先按 [独立 Ollama Docker 部署说明](docs/OLLAMA_DOCKER.md) 新增模型容器，修改原 `.env` 并沿用原更新流程，无需重新部署整套项目。`disploy.sh` 支持配置 `OLLAMA_DOCKER_NETWORK`，重建 API 容器后自动恢复模型网络连接。
+已经部署本项目时，优先使用 [统一 Docker 管理入口](docs/DEPLOYMENT.md)，支持当前 4 核 / 16GB 机器及独立评分服务。只需要 Ollama 时，也可使用 [独立 Ollama Docker 部署说明](docs/OLLAMA_DOCKER.md)。`disploy.sh` 支持配置 `OLLAMA_DOCKER_NETWORK`，重建 API 容器后自动恢复模型网络连接。
 
 从零搭建整套 CPU 环境时，可选 [CPU 四步部署说明](docs/CPU_DEPLOYMENT.md)，同时部署 Qwen4B 量化判别和真实原文 PPL 服务。PPL 先作为实测指标返回，未训练校准前不改变现有风险分。
 

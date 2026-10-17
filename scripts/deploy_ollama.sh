@@ -76,7 +76,12 @@ if [ "$ready" != true ]; then
     exit 1
 fi
 
-docker exec "$CONTAINER_NAME" ollama pull "$MODEL_NAME"
+if [ "${OLLAMA_DEPLOY_SKIP_PULL_IF_PRESENT:-false}" = true ] &&
+    docker exec "$CONTAINER_NAME" ollama show "$MODEL_NAME" >/dev/null 2>&1; then
+    echo "复用已有模型 $MODEL_NAME，跳过下载。"
+else
+    docker exec "$CONTAINER_NAME" ollama pull "$MODEL_NAME"
+fi
 docker exec "$CONTAINER_NAME" ollama list
 echo "Ollama 已准备好：本机 http://127.0.0.1:11434；同网容器 http://aigc-ollama:11434。"
 echo "检测项目未重启。下一步按 docs/OLLAMA_DOCKER.md 修改原 .env 并正常更新项目。"

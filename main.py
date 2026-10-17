@@ -13,16 +13,17 @@ from api.detect import router as detect_router
 from services.checker import API_SOURCE, AZURE_DEFAULT_MODEL, OLLAMA_DEFAULT_MODEL, OPENROUTER_DEFAULT_MODEL
 
 
-from services.ollama_client import start_ollama_client, close_ollama_client
+from services.model_client import DETECTION_PROVIDER, default_model, start_model_client, close_model_client
+from services.bailian_client import BAILIAN_MODEL
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await start_ollama_client()
+    await start_model_client()
     try:
         yield
     finally:
-        await close_ollama_client()
+        await close_model_client()
 
 
 app = FastAPI(title="AIGC Checker Engine", version="1.2", lifespan=lifespan)
@@ -43,20 +44,15 @@ async def health():
 def _render_demo_page(initial_view: str = "demo") -> str:
     """加载前端页面并注入非敏感运行配置；绝不把真实 Token 写进 HTML。"""
     html = _DEMO_PAGE.read_text(encoding="utf-8")
-    default_model = (
-        OLLAMA_DEFAULT_MODEL
-        if API_SOURCE == "ollama"
-        else AZURE_DEFAULT_MODEL
-        if API_SOURCE == "azure"
-        else OPENROUTER_DEFAULT_MODEL
-    )
+    active_model = default_model()
     replacements = {
         "__DAILY_TOKEN_SCRIPT__": _TOKEN_SCRIPT.read_text(encoding="utf-8"),
         "__EXECUTION_LOG_SCRIPT__": _EXECUTION_SCRIPT.read_text(encoding="utf-8"),
         "__INITIAL_VIEW__": initial_view,
-        "__API_SOURCE__": API_SOURCE,
-        "__DEFAULT_MODEL__": default_model,
+        "__API_SOURCE__": DETECTION_PROVIDER,
+        "__DEFAULT_MODEL__": active_model,
         "__OLLAMA_DEFAULT_MODEL__": OLLAMA_DEFAULT_MODEL,
+        "__BAILIAN_DEFAULT_MODEL__": BAILIAN_MODEL,
         "__AZURE_DEFAULT_MODEL__": AZURE_DEFAULT_MODEL,
         "__OPENROUTER_DEFAULT_MODEL__": OPENROUTER_DEFAULT_MODEL,
     }

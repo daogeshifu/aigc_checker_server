@@ -2,6 +2,7 @@
 .gitignore
 .env
 .env.*
+deploy.env
 .venv
 venv
 **/__pycache__

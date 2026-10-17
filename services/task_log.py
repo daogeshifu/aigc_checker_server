@@ -316,6 +316,7 @@ def list_tasks(client_id: str | None, limit: int = 30) -> list[dict[str, Any]]:
 
 def _execution_summary(events: list[dict[str, Any]]) -> dict[str, Any]:
     """从脱敏事件中汇总模型调用尝试、成功与失败状态。"""
+    primary_provider = "ollama"
     configured_local_models: list[str] = []
     local_models: list[str] = []
     heuristic_chunks = 0
@@ -335,8 +336,10 @@ def _execution_summary(events: list[dict[str, Any]]) -> dict[str, Any]:
         step = event["step"]
         details = event.get("details", {})
         if step == "scan.start":
+            primary_provider = details.get("scan_source", "ollama")
             append_unique(configured_local_models, details.get("scan_model"))
         elif step == "judge.route.qwen":
+            primary_provider = details.get("provider", primary_provider)
             append_unique(local_models, details.get("model"))
             local_attempts += 1
         elif step == "judge.qwen.finish":
@@ -414,8 +417,8 @@ def _execution_summary(events: list[dict[str, Any]]) -> dict[str, Any]:
 
     return {
         "local": {
-            "provider": "ollama",
-            "display_name": "Ollama / Qwen",
+            "provider": primary_provider,
+            "display_name": "阿里云百炼 / Qwen" if primary_provider == "bailian" else "Ollama / Qwen",
             "called": local_attempts > 0,
             "models": local_models,
             "configured_models": configured_local_models,
@@ -431,8 +434,8 @@ def _execution_summary(events: list[dict[str, Any]]) -> dict[str, Any]:
         "detection_modes": [
             {
                 "key": "local_qwen",
-                "name": "本地 Qwen 判别",
-                "description": "分块交给 Ollama / Qwen 判断，并融合统计特征得分。",
+                "name": "百炼 Qwen 判别" if primary_provider == "bailian" else "本地 Qwen 判别",
+                "description": "分块交给配置的 Qwen 提供方判断，并融合统计特征得分。",
                 "count": local_attempts,
                 "attempts": local_attempts,
                 "successes": local_successes,
@@ -456,7 +459,7 @@ def _execution_summary(events: list[dict[str, Any]]) -> dict[str, Any]:
             {
                 "key": "remote_review",
                 "name": "远端大模型复核",
-                "description": "边界或低置信度结果由 Azure GPT / OpenRouter 复核。",
+                "description": "边界或低置信度结果由 Azure GPT 复核。",
                 "count": remote_review_attempts,
                 "successes": remote_review_successes,
                 "failures": remote_review_failures,

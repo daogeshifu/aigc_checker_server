@@ -1,5 +1,7 @@
 # 已部署检测项目：独立 Docker 部署 Ollama
 
+同时管理业务 API、Ollama 和原文概率评分时，使用 [统一 Docker 管理入口](DEPLOYMENT.md)：`sudo bash manage.sh up`。以下保留仅部署 Ollama 的说明。
+
 你的检测项目沿用原来的部署流程。本指南只增加独立的 Ollama 容器，不运行 `deploy_cpu.sh`，不切换 `.env.cpu`，也不重建整套服务。
 
 当前执行关系：
@@ -11,7 +13,7 @@
   └─ 可选独立评分服务：原文 token 概率 / PPL / NLL
 ```
 
-代码当前没有百炼直连适配，已有云端配置仍按实际的 Azure / OpenRouter 实现工作。部署 Ollama 无需替换已有云端密钥。Ollama 运行成功后即可接回现有主检测链路；要启用真实 PPL，则另部署评分程序，单独启动 Ollama 并不会自动计算 PPL。
+代码支持通过 `.env` 的 `DETECTION_PROVIDER=ollama|bailian` 切换检测和表达扰动提供方。本文用于 `ollama` 模式；部署 Ollama 无需替换已有云端密钥。要启用真实 PPL，需另部署评分程序，单独启动 Ollama 并不会自动计算 PPL。远程复核仅使用 Azure，OpenRouter 仅保留语义改写兜底。
 
 ## 1. 部署 Ollama 容器
 

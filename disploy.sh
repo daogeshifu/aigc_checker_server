@@ -79,7 +79,9 @@ mkdir -p "${SCRIPT_DIR}/data"
 
 # 先构建，确保构建失败时现有容器继续运行。
 echo ">>> 3/5 构建镜像"
-if [ "${DEPLOY_MODE}" = "compose" ]; then
+if [ "${SKIP_DOCKER_BUILD:-0}" = "1" ]; then
+    echo "镜像已由统一入口构建，跳过重复构建。"
+elif [ "${DEPLOY_MODE}" = "compose" ]; then
     "${COMPOSE[@]}" build --pull
 else
     docker build --pull --tag "${IMAGE_NAME}" .
@@ -98,7 +100,7 @@ if docker container inspect "${CONTAINER_NAME}" >/dev/null 2>&1; then
 fi
 
 if [ "${DEPLOY_MODE}" = "compose" ]; then
-    "${COMPOSE[@]}" up --detach --force-recreate --remove-orphans
+    "${COMPOSE[@]}" up --detach --force-recreate aigc-checker-server
 else
     docker run \
         --detach \

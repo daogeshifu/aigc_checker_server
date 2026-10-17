@@ -60,7 +60,7 @@ window.createExecutionLog = ({ eventLabels, detailLabels, valueLabels }) => {
     const events = run.task?.events || [];
     const execution = run.task?.execution_summary;
     const engines = execution
-      ? `<div class="execution-engines">${engineCard('Ollama / Qwen', execution.local || {}, !run.done)}${(execution.third_party || []).length ? execution.third_party.map(engine => engineCard(engine.display_name || engine.provider, engine, !run.done)).join('') : engineCard('Azure / OpenRouter', {}, !run.done)}</div>`
+      ? `<div class="execution-engines">${engineCard(execution.local?.display_name || 'Qwen 判别', execution.local || {}, !run.done)}${(execution.third_party || []).length ? execution.third_party.map(engine => engineCard(engine.display_name || engine.provider, engine, !run.done)).join('') : engineCard('Azure 复核 / 语义改写', {}, !run.done)}</div>`
       : `<p class="execution-notice">${run.done ? ([400,401,403,409,422].includes(run.httpStatus) ? '请求未进入引擎，本次未调用检测模型。' : '未取得模型调用记录，执行状态尚未确认。') : '模型调用状态：等待服务端日志，暂不能判断是否调用成功。'}</p>`;
     const eventHtml = events.map(event => {
       const details = Object.entries(event.details || {}).filter(([,value]) => value !== null && value !== '').map(([key,value]) => `<span class="detail-chip">${esc(detailLabels[key] || key)} · ${esc(shown(value))}</span>`).join('');

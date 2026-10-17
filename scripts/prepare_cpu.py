@@ -17,6 +17,7 @@ MODEL_URL = f"https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/{MODEL_REVISION}
 MODELSCOPE_URL = f"https://modelscope.cn/models/Qwen/Qwen3-4B-GGUF/resolve/master/{MODEL_FILE}"
 
 CPU_OVERRIDES = {
+    "DETECTION_PROVIDER": "ollama",
     "API_SOURCE": "ollama",
     "FREE_API_TOKENS": "",
     "PRO_API_TOKENS": "",

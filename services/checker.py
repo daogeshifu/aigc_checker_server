@@ -17,7 +17,8 @@ except ImportError:  # pragma: no cover - fallback for minimal local env
 from services.aggregate import aggregate_document, score_chunk
 from services.features import extract_chunk_features, extract_document_features
 from services.judges import judge_chunk_with_qwen
-from services.ollama_client import OLLAMA_DEFAULT_MODEL, generate_text
+from services.ollama_client import OLLAMA_DEFAULT_MODEL
+from services.model_client import DETECTION_PROVIDER, default_model, rewrite_model, generate_text
 from services.preprocess import chunk_text, clean_text, detect_genre, detect_language
 from services.probability_client import measure_probability
 from services.prompts import (
@@ -39,20 +40,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-API_SOURCE = os.getenv("API_SOURCE", "ollama").lower()
-SUPPORTED_API_SOURCES = {"ollama", "azure", "openrouter"}
-SCAN_API_SOURCE = "ollama"
+API_SOURCE = os.getenv("API_SOURCE", DETECTION_PROVIDER).lower()
+SUPPORTED_API_SOURCES = {"ollama", "bailian", "azure", "openrouter"}
+SCAN_API_SOURCE = DETECTION_PROVIDER
 AZURE_DEFAULT_MODEL = os.getenv("AZURE_DEPLOYMENT", "gpt-4o")
 AZURE_REWRITE_DEPLOYMENT = os.getenv("AZURE_REWRITE_DEPLOYMENT", AZURE_DEFAULT_MODEL)
 OPENROUTER_DEFAULT_MODEL = os.getenv("OPENROUTER_MODEL", "qwen/qwen-plus")
 OPENROUTER_REWRITE_MODEL = os.getenv("OPENROUTER_REWRITE_MODEL", OPENROUTER_DEFAULT_MODEL)
-OLLAMA_REWRITE_MODEL = os.getenv("OLLAMA_REWRITE_MODEL", OLLAMA_DEFAULT_MODEL)
 OLLAMA_REWRITE_NUM_CTX = int(os.getenv("OLLAMA_REWRITE_NUM_CTX", "4096"))
 OLLAMA_REWRITE_NUM_PREDICT = int(os.getenv("OLLAMA_REWRITE_NUM_PREDICT", "1024"))
 PROXY_BASE_URL = os.getenv("PROXY_BASE_URL", "http://119.28.110.115:5000")
 PROXY_TOKEN = os.getenv("PROXY_TOKEN", "10a8ed53-e497-4f59-9662-0c650dd889ff")
-PRO_REVIEW_SOURCE = os.getenv("PRO_REVIEW_SOURCE", "openrouter").lower()
-PRO_REVIEW_MODEL = os.getenv("PRO_REVIEW_MODEL", OPENROUTER_DEFAULT_MODEL)
+PRO_REVIEW_SOURCE = "azure"
+# Ignore legacy OpenRouter review model IDs; Azure requires a deployment name.
+PRO_REVIEW_MODEL = os.getenv("AZURE_REVIEW_DEPLOYMENT") or (
+    os.getenv("PRO_REVIEW_MODEL") if os.getenv("PRO_REVIEW_SOURCE", "azure").lower() == "azure" else None
+) or AZURE_DEFAULT_MODEL
 OPENROUTER_EXCLUDE_REASONING = os.getenv("OPENROUTER_EXCLUDE_REASONING", "true").lower() not in {"false", "0", "no"}
 # 远端二审全局开关，设为 false/0/no 可临时关闭，不影响本地检测流程
 REMOTE_REVIEW_ENABLED = os.getenv("REMOTE_REVIEW_ENABLED", "true").lower() not in {"false", "0", "no"}
@@ -88,18 +91,14 @@ def _normalize_api_source(source: str | None) -> str:
 
 
 def _resolve_scan_model(requested_api_source: str, requested_model: str | None) -> str:
-    """scan 主链路固定走 Ollama，仅在明确请求 Ollama 时允许覆盖本地模型。"""
+    """提供方由服务器配置决定；仅同提供方请求可覆盖模型名。"""
     if requested_api_source == SCAN_API_SOURCE and requested_model:
         return requested_model
-    return OLLAMA_DEFAULT_MODEL
+    return default_model()
 
 
 def _review_model_for(source: str) -> str:
-    """根据 API 来源返回 Pro 二审所用模型，优先读取环境变量覆盖值。"""
-    if source == "azure":
-        return os.getenv("PRO_REVIEW_MODEL", AZURE_DEFAULT_MODEL)
-    if source == "openrouter":
-        return os.getenv("PRO_REVIEW_MODEL", OPENROUTER_DEFAULT_MODEL)
+    """复核固定使用 Azure deployment，不读取 OpenRouter 模型配置。"""
     return PRO_REVIEW_MODEL
 
 
@@ -112,10 +111,10 @@ def _semantic_rewrite_attempts() -> list[tuple[str, str]]:
 
 
 def _resolve_perturb_model(requested_api_source: str, requested_model: str | None) -> str:
-    """扰动步骤固定走 Ollama；若请求本身指定了本地模型，则优先沿用。"""
-    if requested_api_source == "ollama" and requested_model:
+    """表达扰动跟随检测提供方，百炼模式无需 Ollama。"""
+    if requested_api_source == SCAN_API_SOURCE and requested_model:
         return requested_model
-    return OLLAMA_REWRITE_MODEL
+    return rewrite_model()
 
 
 def _get_azure_client():
@@ -699,28 +698,12 @@ def _merge_review_result(result: dict, review_result: dict, review_meta: dict) -
 
 async def _run_remote_review(content: str, result: dict, task_id: str | None = None) -> dict | None:
     """调用远端 LLM 进行二审，返回验证后的 RemoteReviewResult dict，失败时返回 None 不影响主流程。"""
-    if PRO_REVIEW_SOURCE not in {"azure", "openrouter"}:
-        _log_task(task_id, "review.skip", reason="unsupported_source", source=PRO_REVIEW_SOURCE)
-        return None
-
     try:
         review_prompt = _build_remote_review_prompt(content, result)
-        if PRO_REVIEW_SOURCE == "azure":
-            raw = await _call_azure_json(
-                REMOTE_REVIEW_SYSTEM_PROMPT,
-                review_prompt,
-                deployment_name=_review_model_for(PRO_REVIEW_SOURCE),
-                purpose="remote_review",
-                task_id=task_id,
-            )
-        else:
-            raw = await _call_openrouter_json(
-                REMOTE_REVIEW_SYSTEM_PROMPT,
-                review_prompt,
-                model_id=_review_model_for(PRO_REVIEW_SOURCE),
-                purpose="remote_review",
-                task_id=task_id,
-            )
+        raw = await _call_azure_json(
+            REMOTE_REVIEW_SYSTEM_PROMPT, review_prompt,
+            deployment_name=PRO_REVIEW_MODEL, purpose="remote_review", task_id=task_id,
+        )
         return RemoteReviewResult.model_validate(raw).model_dump()
     except Exception as exc:
         _log_task(task_id, "review.skip", reason="provider_error", source=PRO_REVIEW_SOURCE, error=exc)
@@ -833,7 +816,7 @@ async def _semantic_rewrite_step(content: str, detection_result: dict, model: st
 
 
 async def _perturb_expression_step(original_text: str, current_text: str, detection_result: dict, model: str | None, api_source: str | None, task_id: str | None = None) -> dict:
-    """Step2：用本地 Ollama Qwen 对改写稿做二次扰动，打散表达痕迹。"""
+    """Step2：用配置的 Qwen 提供方 对改写稿做二次扰动，打散表达痕迹。"""
     perturb_model = _resolve_perturb_model(_normalize_api_source(api_source), model)
     prompt = _build_perturb_prompt(original_text, current_text, detection_result)
     try:
@@ -841,7 +824,7 @@ async def _perturb_expression_step(original_text: str, current_text: str, detect
             task_id,
             "rewrite.step.start",
             stage="expression_perturb",
-            provider="ollama",
+            provider=SCAN_API_SOURCE,
             target_model=perturb_model,
         )
         rewritten = await generate_text(
@@ -861,7 +844,7 @@ async def _perturb_expression_step(original_text: str, current_text: str, detect
             task_id,
             "rewrite.step.finish",
             stage="expression_perturb",
-            provider="ollama",
+            provider=SCAN_API_SOURCE,
             target_model=perturb_model,
             applied=applied,
             chars=len(perturbed_text),
@@ -877,7 +860,7 @@ async def _perturb_expression_step(original_text: str, current_text: str, detect
             )
         return {
             "name": "expression_perturb",
-            "provider": "ollama",
+            "provider": SCAN_API_SOURCE,
             "model": perturb_model,
             "applied": applied,
             "text": perturbed_text if applied else current_text,
@@ -888,13 +871,13 @@ async def _perturb_expression_step(original_text: str, current_text: str, detect
             task_id,
             "rewrite.step.failure",
             stage="expression_perturb",
-            provider="ollama",
+            provider=SCAN_API_SOURCE,
             target_model=perturb_model,
             error=exc,
         )
         return {
             "name": "expression_perturb",
-            "provider": "ollama",
+            "provider": SCAN_API_SOURCE,
             "model": perturb_model,
             "applied": False,
             "text": current_text,
@@ -976,7 +959,7 @@ async def run_check(
     Args:
         content: 待检测的原始文本
         model: 请求侧模型参数；当前仅在请求来源为 ollama 时才会覆盖本地检测模型
-        api_source: 请求侧来源（ollama/azure/openrouter），当前 scan 实际执行仍固定为 Ollama
+        api_source: 请求侧来源（ollama/azure/openrouter），实际由 DETECTION_PROVIDER 选择 Ollama / 百炼
         plan: 订阅套餐（free/pro），影响返回字段和二审权限
         can_remote_review: 是否允许触发 Pro 远端二审
 
@@ -1074,6 +1057,7 @@ async def run_check(
             "signals": qwen_result.get("signals", {}),
             "judge_label": qwen_result.get("label"),
             "judge_mode": qwen_result.get("judge_mode", "qwen"),
+            "judge_provider": SCAN_API_SOURCE,
             "judge_skip_reason": qwen_result.get("judge_skip_reason"),
             "perplexity_proxy": None,
             "binoculars_score": None,
@@ -1107,8 +1091,8 @@ async def run_check(
         label=result.get("label"),
     )
     result["engine"] = {
-        "checker": "hybrid-local",
-        "version": "2.0.0",
+        "checker": f"hybrid-{SCAN_API_SOURCE}",
+        "version": "2.1.0",
         "score_semantics": "uncalibrated_risk_score",
         "requested_api_source": requested_api_source,
         "requested_model": model,

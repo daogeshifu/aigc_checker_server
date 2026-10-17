@@ -1,6 +1,8 @@
 .idea
 .env
 .env.cpu
+deploy.env
+.env.backup.*
 models/
 dist/
 .venv

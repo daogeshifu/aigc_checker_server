@@ -5,7 +5,7 @@ import logging
 import json
 
 from services.aggregate import _feature_score
-from services.ollama_client import generate_json
+from services.model_client import DETECTION_PROVIDER, generate_json
 from services.prompts import QWEN_CHUNK_SYSTEM_PROMPT
 from services.schemas import QwenJudgeResult
 from services.task_log import record_task_event
@@ -91,7 +91,7 @@ async def judge_chunk_with_qwen(
     task_id: str | None = None,
     chunk_id: int | None = None,
 ) -> dict:
-    """调用 Qwen（本地 Ollama）对单个分块进行风格判断，返回 QwenJudgeResult dict。
+    """调用配置的 Ollama 或百炼 Qwen，对单个分块返回相同判断字段。
 
     仅发送文体和待分析文本；数值特征只用于路由及后续融合，减少锚定偏差。
     若 LLM 调用失败（超时/格式异常等），自动降级为 _heuristic_fallback，不影响主流程。
@@ -124,8 +124,8 @@ async def judge_chunk_with_qwen(
             status="running",
             details={
                 "chunk_id": chunk_id,
-                "route": "ollama_qwen",
-                "provider": "ollama",
+                "route": f"{DETECTION_PROVIDER}_qwen",
+                "provider": DETECTION_PROVIDER,
                 "model": model or "default",
                 "model_called": True,
             },
@@ -146,6 +146,7 @@ async def judge_chunk_with_qwen(
             status="success",
             details={
                 "chunk_id": chunk_id,
+                "provider": DETECTION_PROVIDER,
                 "model": model or "default",
                 "raw_ai_score": result.get("ai_score"),
                 "raw_confidence": result.get("confidence"),
@@ -168,6 +169,7 @@ async def judge_chunk_with_qwen(
             status="failed",
             details={
                 "chunk_id": chunk_id,
+                "provider": DETECTION_PROVIDER,
                 "model": model or "default",
                 "error_type": type(exc).__name__,
                 "fallback": "statistics_only",
