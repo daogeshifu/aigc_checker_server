@@ -199,6 +199,12 @@
 
 
     .execution-section { margin:0 28px 28px; border:1px solid var(--line); border-radius:16px; background:#fff; overflow:hidden; }
+    .flowchart-layout { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:20px; margin:0 28px 28px; }
+    .flowchart-layout .flowchart-section { min-width:0; margin:0; }
+    .flowchart-frame { display:block; width:100%; max-width:768px; height:1700px; margin:0 auto; border:0; color-scheme:light; }
+    body[data-view="test"] .flowchart-layout { display:none; }
+    @media (max-width:1200px) { .flowchart-layout { grid-template-columns:minmax(0,1fr); } }
+    @media (max-width:760px) { .flowchart-layout { margin:0 14px 18px; gap:18px; } }
     .execution-head { padding:20px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); }
     .execution-head h2 { display:flex; align-items:center; gap:9px; margin:0 0 8px; font-size:15px; }
     .execution-head p,.execution-empty { margin:0; color:var(--muted); font-size:12px; line-height:1.8; }
@@ -425,6 +431,40 @@
     <div class="execution-table history-table" id="historyTable"><p class="execution-empty">填写访问 Token 后，可查看服务端保存的任务日志。</p></div>
     <div class="history-pager"><span id="historyPageInfo">共 0 条</span><button id="historyPrevBtn" class="small-btn" type="button" disabled>上一页</button><button id="historyNextBtn" class="small-btn" type="button" disabled>下一页</button></div>
   </section>
+
+  <div class="flowchart-layout" aria-label="整体业务流程与检测分支详细流程">
+    <section class="execution-section flowchart-section" aria-label="整体业务流程图">
+      <iframe class="flowchart-frame" id="flowchartFrame" src="/demo/flow" title="整体业务流程图：完整总览、检测与复核、改写与回滚、输出与进度" loading="lazy"></iframe>
+    </section>
+    <section class="execution-section flowchart-section" aria-label="检测分支 api/scan 详细流程节点图">
+      <iframe class="flowchart-frame" id="scanFlowchartFrame" src="/demo/flow/scan" title="检测分支 · /api/scan 详细流程节点图" loading="lazy"></iframe>
+    </section>
+  </div>
+  <script>
+    (() => {
+      document.querySelectorAll('.flowchart-frame').forEach(frame => {
+        let observer;
+        let resizeRequest;
+        const observeContent = () => {
+          observer?.disconnect();
+          const body = frame.contentDocument?.body;
+          if (!body) return;
+          const resize = () => {
+            cancelAnimationFrame(resizeRequest);
+            resizeRequest = requestAnimationFrame(() => {
+              const height = Math.ceil(body.getBoundingClientRect().height);
+              if (height > 0 && frame.style.height !== `${height}px`) frame.style.height = `${height}px`;
+            });
+          };
+          observer = new ResizeObserver(resize);
+          observer.observe(body);
+          resize();
+        };
+        frame.addEventListener('load', observeContent);
+        if (frame.contentDocument?.readyState === 'complete') observeContent();
+      });
+    })();
+  </script>
 
   <div class="modal-shell" id="detailModal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">

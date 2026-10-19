@@ -1,0 +1,2933 @@
+<!doctype html>
+<html lang="en" data-visualize-standalone>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>整体业务流程图</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+
+</head>
+<body>
+<iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" title="整体业务流程图" data-srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;整体业务流程图&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 16px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans:
+    -apple-system-body, ui-sans-serif, -apple-system, system-ui, &quot;Segoe UI&quot;,
+    Helvetica, &quot;Apple Color Emoji&quot;, Arial, sans-serif, &quot;Segoe UI Emoji&quot;,
+    &quot;Segoe UI Symbol&quot;;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --icon-size: 16px;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --corner-shape: round;
+  --radius: var(--border-radius-lg, 8px);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: var(--visualize-paint-gutter, 0px);
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  -webkit-font-smoothing: antialiased;
+  font-size: var(--font-size-base);
+  line-height: calc(var(--font-size-base) * 1.625);
+  font-weight: var(--font-weight-normal);
+}
+
+.cursor-interaction {
+  cursor: var(--cursor-interaction, pointer);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: var(--cursor-interaction, pointer);
+  text-decoration: none;
+  text-underline-offset: 2px;
+  font-weight: inherit;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+li,
+.table {
+  font-family: var(--font-sans);
+}
+
+h1 {
+  font-size: calc(var(--font-size-base) * 1.5);
+  line-height: 1.3333333333;
+}
+
+h2 {
+  font-size: calc(var(--font-size-base) * 1.25);
+  line-height: 1.4;
+}
+h3 {
+  font-size: calc(var(--font-size-base) * 1.125);
+  line-height: 1.5555555556;
+}
+h4 {
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+}
+h5,
+h6 {
+  font-size: var(--font-size-base);
+  line-height: calc(var(--font-size-base) * 1.625);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+b,
+strong,
+th {
+  font-weight: 600;
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+pre,
+pre code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: calc(var(--font-size-base) * 0.875);
+  line-height: calc(var(--font-size-base) * 1.625);
+  font-family: var(--font-sans);
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+.table :is(th, td):not(:last-child) {
+  padding-inline-end: calc(var(--font-size-base) * 1.5);
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead :is(th, td) {
+  border-bottom-color: var(--border-strong, var(--input));
+  padding-block: calc(var(--font-size-base) / 2);
+  line-height: var(--font-size-base);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+.table tbody :is(th, td) {
+  padding-block: calc(var(--font-size-base) * 0.625);
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 8px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: var(--corner-shape);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+.widget {
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  box-shadow: 0 0 0 0.5px var(--border-strong, var(--border));
+  color: var(--foreground);
+  background: var(--background);
+}
+
+#widget &gt; :not(.card, .widget, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  border: 1px solid var(--border);
+  corner-shape: var(--corner-shape);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--font-sans);
+  padding: 5px 12px;
+  border-color: color-mix(
+    in oklab,
+    light-dark(var(--primary-foreground), var(--foreground)) 5%,
+    transparent
+  );
+  border-radius: var(--radius-2xl);
+  color: light-dark(var(--primary-foreground), var(--foreground));
+  background: light-dark(var(--foreground), var(--popover));
+  box-shadow: 0 8px 18px rgb(15 23 42 / 20%);
+  letter-spacing: -0.15px;
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+hr {
+  width: 100%;
+  height: 1px;
+  margin-block: 6px;
+  border: 0;
+  background: var(--border);
+}
+
+.nav {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.progress {
+  display: flex;
+  height: 8px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 8px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar:only-child {
+  border-radius: var(--radius-full);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  color: color-mix(in srgb, var(--foreground) 40%, var(--muted-foreground));
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  font-family: var(--font-sans);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 1;
+}
+
+small,
+.text-small {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.nav-link,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+/* Match inline alignment without overriding a containing flex or grid layout. */
+.btn,
+.nav-link,
+.form-control,
+.form-select,
+.form-range,
+.form-check {
+  vertical-align: middle;
+}
+
+.btn,
+.nav-link {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  corner-shape: var(--corner-shape);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: inherit;
+  font-family: var(--font-sans);
+  height: fit-content;
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  padding-inline: var(--control-spacing, 12px);
+  border-color: transparent;
+  border-radius: var(--radius-full);
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+}
+
+.btn {
+  border-color: var(--border);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: var(--cursor-interaction, pointer);
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.nav-link:not(:disabled):not([aria-disabled=&quot;true&quot;]):hover {
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.btn-primary {
+  border-color: var(--border);
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: border-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: border-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--muted-foreground);
+  background: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.nav-pills .nav-link {
+  min-width: 0;
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.nav-justified .nav-link {
+  flex: 1 1 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.nav-pills .nav-link.active {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+/* Shared preview chrome; product styles stay inside each variant. */
+.viz-dotted-background {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--foreground) 14%, transparent) 0.8px,
+    transparent 0.8px
+  );
+  background-position: center;
+  background-size: 16px 16px;
+}
+
+.viz-carousel {
+  position: relative;
+  min-width: 0;
+}
+
+.viz-carousel:has(&gt; .viz-carousel-controls) {
+  min-height: calc(60px + var(--viz-carousel-picker-height, 0px));
+  padding-bottom: 60px;
+}
+
+.viz-carousel &gt; [data-variant][hidden] {
+  display: none !important;
+}
+
+.viz-carousel &gt; [data-variant] {
+  isolation: isolate;
+}
+
+.viz-carousel-controls {
+  --viz-carousel-hover: light-dark(
+    color-mix(in srgb, var(--foreground) 5.4%, transparent),
+    color-mix(in srgb, var(--foreground) 7.8%, transparent)
+  );
+  position: absolute;
+  z-index: 2;
+  bottom: 8px;
+  left: 50%;
+  display: flex;
+  width: max-content;
+  /* Leave room for the host&#x27;s design-controls launcher at the trailing edge. */
+  max-width: calc(100% - 96px);
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-sans);
+  /* Match the settings dropdown chrome independently of the content font size. */
+  font-size: 13px;
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+  transform: translateX(-50%);
+  user-select: none;
+}
+
+/* Keep authored mockup button styles out of the shared carousel chrome. */
+.viz-carousel-controls button,
+.viz-carousel-picker &gt; summary {
+  display: flex !important;
+  height: auto !important;
+  min-height: 30px;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px;
+  padding: 0 6px !important;
+  -webkit-app-region: no-drag;
+  border: 0 !important;
+  border-radius: 14px !important;
+  color: inherit !important;
+  background: transparent !important;
+  font: inherit !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.viz-carousel-controls &gt; button,
+.viz-carousel-picker &gt; summary {
+  position: relative;
+  isolation: isolate;
+}
+
+.viz-carousel-controls &gt; button {
+  --icon-size: 16px;
+  width: 30px !important;
+  padding: 0 !important;
+}
+
+.viz-carousel-picker &gt; summary {
+  padding-inline: 12px !important;
+}
+
+.viz-carousel-controls .viz-carousel-caret {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin: 0;
+  color: inherit;
+  transform: rotate(180deg);
+}
+
+.viz-carousel-controls &gt; button &gt; svg,
+.viz-carousel-controls .viz-carousel-caret,
+.viz-carousel-count {
+  opacity: 0.5;
+}
+
+.viz-carousel-controls &gt; button::before,
+.viz-carousel-picker &gt; summary::before {
+  position: absolute;
+  z-index: -1;
+  inset: 3px;
+  border-radius: 12px;
+  content: &quot;&quot;;
+  pointer-events: none;
+}
+
+.viz-carousel-controls &gt; button:hover::before,
+.viz-carousel-picker &gt; summary:hover::before {
+  background: var(--viz-carousel-hover);
+}
+
+.viz-carousel-controls &gt; button,
+.viz-carousel-controls [data-lucide],
+.viz-carousel-controls .lucide {
+  flex-shrink: 0;
+}
+
+.viz-carousel-picker {
+  min-width: 0;
+}
+
+.viz-carousel-picker &gt; summary {
+  min-width: 0;
+  list-style: none;
+}
+
+.viz-carousel-picker &gt; summary::-webkit-details-marker {
+  display: none;
+}
+
+.viz-carousel-count {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.viz-carousel-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viz-carousel-options {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  max-height: 240px;
+  flex-direction: column;
+  gap: 2px;
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  box-shadow: 0 4px 12px light-dark(rgb(0 0 0 / 6%), rgb(0 0 0 / 25%));
+}
+
+.viz-carousel-options &gt; button {
+  border-radius: max(0px, calc(var(--radius-lg) - 5px)) !important;
+  width: 100% !important;
+  min-height: 28px;
+  justify-content: flex-start !important;
+  padding: 4px 8px !important;
+  font-size: var(--font-size-small) !important;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.viz-carousel-options &gt; [aria-current=&quot;true&quot;],
+.viz-carousel-options &gt; button:hover {
+  background: var(--viz-carousel-hover) !important;
+}
+
+.btn:disabled,
+.nav-link:disabled,
+.nav-link[aria-disabled=&quot;true&quot;] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  padding-inline: calc(4px + var(--control-spacing, 12px) / 2);
+  border-color: var(--input);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--popover) 96%, transparent);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.4285714286;
+}
+.form-control:is(
+  [type=&quot;file&quot;],
+  [type=&quot;date&quot;],
+  [type=&quot;datetime-local&quot;],
+  [type=&quot;month&quot;],
+  [type=&quot;week&quot;],
+  [type=&quot;color&quot;]
+) {
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  line-height: 18px;
+}
+.form-control:is(
+  [type=&quot;date&quot;],
+  [type=&quot;datetime-local&quot;],
+  [type=&quot;month&quot;],
+  [type=&quot;week&quot;]
+) {
+  padding-inline: var(--control-spacing, 12px);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+  padding: 0;
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+  min-height: calc(10px + 2 * var(--control-spacing, 12px));
+  padding-inline: var(--control-spacing, 12px);
+  margin-inline-end: var(--control-spacing, 12px);
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: var(--corner-shape);
+}
+
+textarea.form-control {
+  height: auto;
+  resize: vertical;
+  min-height: 96px;
+  padding: 8px 10px;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: none;
+}
+.form-control:disabled {
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  opacity: 1;
+}
+.form-control[aria-invalid=&quot;true&quot;] {
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 20%, transparent);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: fit-content;
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  margin: 0;
+  /* The secondary icon role is 14px at compact density and 16px at web density. */
+  --icon-size: calc(10px + var(--control-spacing, 12px) / 2);
+  /* Settings dropdowns retain a 12px inset and a 4px text-to-chevron gap. */
+  padding: 0 calc(16px + var(--icon-size)) 0 12px;
+  outline: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(
+      45deg,
+      transparent calc(50% - 0.6px),
+      var(--muted-foreground) calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    ),
+    linear-gradient(
+      135deg,
+      transparent calc(50% - 0.6px),
+      var(--muted-foreground) calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    );
+  background-position:
+    calc(100% - 12px - var(--icon-size) / 2) 50%,
+    calc(100% - 12px - var(--icon-size) * 0.18) 50%;
+  background-repeat: no-repeat;
+  background-size: calc(var(--icon-size) * 0.32) calc(var(--icon-size) * 0.32);
+  cursor: var(--cursor-interaction, default);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+}
+
+.form-select option {
+  color: var(--popover-foreground);
+  background-color: var(--popover);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.form-select:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+.form-select:disabled {
+  opacity: 0.4;
+}
+
+.form-check {
+  display: flex;
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  corner-shape: round;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  width: calc(10px + var(--control-spacing, 12px) / 2);
+  height: calc(10px + var(--control-spacing, 12px) / 2);
+  border-color: var(--border-strong, var(--input));
+  border-radius: calc(var(--radius-sm) / 2);
+  background-color: transparent;
+  color: var(--foreground);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:is(:checked, :indeterminate) {
+  border-color: var(--border-strong, var(--input));
+  background-color: color-mix(in srgb, var(--popover) 96%, transparent);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+  background-color: var(--foreground);
+}
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:indeterminate::before {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 65%;
+  height: 6.65%;
+  margin: auto;
+  border-radius: var(--radius-full);
+  background: var(--foreground);
+  mask: none;
+  content: &quot;&quot;;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  border-radius: var(--radius-full);
+  width: 16px;
+  height: 16px;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--input);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 0;
+  background: radial-gradient(
+    circle,
+    var(--primary-foreground) 0 3px,
+    var(--foreground) 3px
+  );
+  box-shadow: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:focus-visible {
+  border-color: var(--ring);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+.form-check:not(.form-switch) .form-check-input[type=&quot;radio&quot;]:disabled,
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;radio&quot;]:disabled
+  + .form-check-label {
+  opacity: 0.5;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+  border-color: #fff;
+  background: #fff;
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--blue);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+  outline: none;
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  accent-color: var(--primary);
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  outline: none;
+  border-radius: var(--radius-full);
+  color: var(--foreground);
+  background: transparent;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  background: var(--form-range-track, var(--border));
+  height: 2px;
+  border-radius: var(--radius-full);
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  margin-top: -9px;
+  border-color: transparent;
+  background: currentColor;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Outline the native track and thumb, preserving the larger input hit area. */
+.form-range:focus-visible::-webkit-slider-runnable-track {
+  outline: 2px auto Highlight;
+  outline-color: -webkit-focus-ring-color;
+}
+
+.form-range::-moz-range-track {
+  background: var(--form-range-track, var(--border));
+  height: 2px;
+  border-radius: var(--radius-full);
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  border-color: transparent;
+  background: currentColor;
+  box-shadow: var(--shadow-sm);
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+
+.form-range:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--blue);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible,
+.nav-link:focus-visible {
+  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.viz-carousel-controls :is(button, summary):focus-visible {
+  outline: 2px solid var(--ring) !important;
+  outline-offset: 2px !important;
+}
+
+/* Web recipes are the default, including on renderers without inline style queries. */
+@supports (border-radius: if(style(--corner-shape: round): 1px; else: 2px)) {
+  /* Match the host&#x27;s proportional text-sm scale at every text preference. */
+  .tooltip,
+  .viz-badge,
+  .btn,
+  .nav-link,
+  .form-control,
+  .form-select {
+    font-size: if(
+      style(--corner-shape: round): round(
+          nearest,
+          calc(var(--font-size-base) * 14 / 16),
+          1px
+        );
+        else: round(nearest, calc(var(--font-size-base) * 13 / 14), 1px)
+    );
+  }
+
+  .btn,
+  .nav-link,
+  .form-select {
+    border-radius: if(
+      style(--corner-shape: round): var(--radius-full); else: var(--radius-lg)
+    );
+  }
+
+  .form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+    border-radius: if(
+      style(--corner-shape: round): calc(var(--radius-sm) / 2);
+        else: calc(var(--radius-lg) * 0.4)
+    );
+  }
+
+  .tooltip {
+    font-weight: if(
+      style(--corner-shape: round): 600; else: var(--font-weight-normal)
+    );
+  }
+}
+
+@media (pointer: coarse) {
+  .viz-carousel:has(&gt; .viz-carousel-controls) {
+    min-height: calc(76px + var(--viz-carousel-picker-height, 0px));
+    padding-bottom: 76px;
+  }
+
+  .btn,
+  .nav-link,
+  .viz-carousel-controls button,
+  .viz-carousel-picker &gt; summary,
+  .form-control,
+  .form-select {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Keep small-screen WebKit from zooming when a text field receives focus. */
+  .form-control,
+  .form-select {
+    font-size: max(16px, calc(var(--font-size-base) * 14 / 16));
+    font-size: max(
+      16px,
+      round(nearest, calc(var(--font-size-base) * 14 / 16), 1px)
+    );
+  }
+  .form-control:is(
+    [type=&quot;file&quot;],
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;week&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;color&quot;]
+  ) {
+    height: 44px;
+    min-height: 44px;
+    font-size: max(16px, calc(var(--font-size-base) * 14 / 16));
+    font-size: max(
+      16px,
+      round(nearest, calc(var(--font-size-base) * 14 / 16), 1px)
+    );
+  }
+
+  .form-control[type=&quot;file&quot;]::file-selector-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-control-color[type=&quot;color&quot;] {
+    width: 44px;
+    height: 44px;
+  }
+
+  .form-control:is(
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;week&quot;]
+  ) {
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 8px;
+  }
+
+  .form-check {
+    min-height: 44px;
+    padding-inline: 15px;
+  }
+
+  .form-check-input {
+    position: relative;
+  }
+
+  .form-check-input::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    content: &quot;&quot;;
+    transform: translate(-50%, -50%);
+  }
+
+  .form-check-label {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .form-range {
+    height: 44px;
+    touch-action: pan-y;
+  }
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: var(--icon-size) !important;
+  height: var(--icon-size) !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script type=&quot;application/json&quot; id=&quot;codex-visualization-widget-state&quot;&gt;__CODEX_VISUALIZATION_WIDGET_STATE__&lt;/script&gt;
+&lt;script&gt;(() =&gt; {
+  const root = document.documentElement;
+  const mediaQuery = globalThis.matchMedia(&quot;(prefers-color-scheme: dark)&quot;);
+  const apply = Reflect.apply;
+  const isArray = Array.isArray;
+  const hasOwn = Object.hasOwn;
+  const parentWindow = globalThis.parent;
+  const stringify = JSON.stringify;
+  const parse = JSON.parse;
+  const encode = TextEncoder.prototype.encode.bind(new TextEncoder());
+  const initialStateElement = document.getElementById(
+    &quot;codex-visualization-widget-state&quot;,
+  );
+  const initialGlobals = parse(initialStateElement?.textContent ?? &quot;{}&quot;);
+  initialStateElement?.remove();
+  /** @type {Record&lt;string, unknown&gt; | null} */
+  let state = initialGlobals.widgetState ?? null;
+  const statePersistence = initialGlobals.statePersistence ?? &quot;none&quot;;
+  let nextStateRequestId = 0;
+  /** @type {Map&lt;number, { resolve: () =&gt; void; reject: (error: Error) =&gt; void; timeout: ReturnType&lt;typeof globalThis.setTimeout&gt;; serializedState: string }&gt;} */
+  const pendingStateWrites = new Map();
+  const persistenceError = () =&gt;
+    Object.assign(
+      new Error(&quot;The host could not persist the widget state update&quot;),
+      {
+        code: -32000,
+        data: { code: &quot;widget_state_persistence_failed&quot;, retryable: false },
+      },
+    );
+  /**
+   * @param {object} prototype
+   * @param {string} property
+   */
+  const getPrototypeGetter = (prototype, property) =&gt; {
+    // oxlint-disable-next-line typescript/unbound-method -- invoked through captured Reflect.apply
+    const getter = Object.getOwnPropertyDescriptor(prototype, property)?.get;
+    if (getter == null) {
+      throw new Error(`Missing ${property} getter`);
+    }
+    return getter;
+  };
+  const getMessageData = getPrototypeGetter(MessageEvent.prototype, &quot;data&quot;);
+  const getMessagePorts = getPrototypeGetter(MessageEvent.prototype, &quot;ports&quot;);
+  const getMessageSource = getPrototypeGetter(MessageEvent.prototype, &quot;source&quot;);
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const addHostMessageListener = MessagePort.prototype.addEventListener;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const postHostMessage = MessagePort.prototype.postMessage;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const startHostPort = MessagePort.prototype.start;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const stopMessagePropagation = Event.prototype.stopImmediatePropagation;
+  /** @type {MessagePort | null} */
+  let hostPort = null;
+  const postToHost = (type, payload) =&gt; {
+    if (hostPort != null) {
+      apply(postHostMessage, hostPort, [{ type, ...payload }]);
+    }
+  };
+  const openExternal = ({ href }) =&gt; {
+    if (globalThis.navigator.userActivation?.isActive === true) {
+      postToHost(&quot;open-external&quot;, { href });
+    }
+  };
+  const sendFollowUpMessage = ({ context, prompt, title }) =&gt; {
+    if (globalThis.navigator.userActivation?.isActive === true) {
+      postToHost(&quot;follow-up&quot;, { context, prompt, title });
+    }
+    return Promise.resolve();
+  };
+  /**
+   * @param {Record&lt;string, unknown&gt; | ((previous: Record&lt;string, unknown&gt; | null) =&gt; Record&lt;string, unknown&gt;)} next
+   * @returns {Promise&lt;void&gt;}
+   */
+  const setWidgetState = async (next) =&gt; {
+    const nextState = typeof next === &quot;function&quot; ? next(state) : next;
+    if (
+      nextState == null ||
+      typeof nextState !== &quot;object&quot; ||
+      isArray(nextState)
+    ) {
+      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+    }
+    const inputState = stringify(
+      nextState,
+      (_key, /** @type {unknown} */ value) =&gt; {
+        if (
+          typeof value === &quot;undefined&quot; ||
+          typeof value === &quot;function&quot; ||
+          typeof value === &quot;symbol&quot; ||
+          (typeof value === &quot;number&quot; &amp;&amp; !Number.isFinite(value))
+        ) {
+          throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+        }
+        return value;
+      },
+    );
+    const parsedState = parse(inputState);
+    if (
+      parsedState == null ||
+      typeof parsedState !== &quot;object&quot; ||
+      isArray(parsedState)
+    ) {
+      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+    }
+    const storedState = {
+      modelContent: null,
+      privateContent: null,
+      ...parsedState,
+    };
+    const serializedState = stringify(storedState);
+    if (encode(serializedState).length &gt; 16 * 1024) {
+      throw new TypeError(
+        &quot;Widget state must be a JSON object of at most 16 KiB&quot;,
+      );
+    }
+    if (
+      hasOwn(storedState, &quot;imageIds&quot;) &amp;&amp;
+      (!isArray(storedState.imageIds) ||
+        storedState.imageIds.some(
+          (/** @type {unknown} */ id) =&gt; typeof id !== &quot;string&quot;,
+        ))
+    ) {
+      throw new TypeError(&quot;Widget state imageIds must be an array of strings&quot;);
+    }
+    if (storedState.imageIds?.length &gt; 0) {
+      throw Object.assign(
+        new TypeError(&quot;Visualization state does not support image attachments&quot;),
+        { code: -32602, data: { code: &quot;images_unsupported&quot; } },
+      );
+    }
+    state = storedState;
+    globalThis.openai.widgetState = state;
+    globalThis.dispatchEvent(
+      new CustomEvent(&quot;openai:set_globals&quot;, {
+        detail: { globals: { widgetState: state } },
+      }),
+    );
+    if (statePersistence === &quot;none&quot;) {
+      throw persistenceError();
+    }
+    const id = ++nextStateRequestId;
+    return new Promise((resolve, reject) =&gt; {
+      const timeout = globalThis.setTimeout(() =&gt; {
+        pendingStateWrites.delete(id);
+        reject(persistenceError());
+      }, 30_000);
+      pendingStateWrites.set(id, { resolve, reject, timeout, serializedState });
+      postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
+    });
+  };
+  const syncTheme = () =&gt; {
+    const theme = mediaQuery.matches ? &quot;dark&quot; : &quot;light&quot;;
+    root.dataset.theme = theme;
+    globalThis.openai = {
+      ...globalThis.openai,
+      openExternal,
+      sendFollowUpMessage,
+      setWidgetState,
+      theme,
+      visualizationStyleVariables: {},
+      visualizationTheme: theme,
+      widgetState: state,
+      statePersistence,
+      stateModelContext: &quot;none&quot;,
+    };
+    globalThis.dispatchEvent(
+      new CustomEvent(&quot;openai:set_globals&quot;, {
+        detail: { globals: globalThis.openai },
+      }),
+    );
+  };
+  const sendHeight = () =&gt; {
+    postToHost(&quot;height&quot;, {
+      height: Math.ceil(
+        Math.max(
+          document.body.scrollHeight,
+          document.body.getBoundingClientRect().height,
+        ),
+      ),
+    });
+  };
+
+  globalThis.addEventListener(
+    &quot;message&quot;,
+    (event) =&gt; {
+      const data = apply(getMessageData, event, []);
+      const ports = apply(getMessagePorts, event, []);
+      const source = apply(getMessageSource, event, []);
+      if (
+        hostPort != null ||
+        source !== parentWindow ||
+        typeof data !== &quot;object&quot; ||
+        data?.type !== &quot;codex-visualization-initialize&quot; ||
+        !isArray(ports) ||
+        ports.length !== 1
+      ) {
+        return;
+      }
+      apply(stopMessagePropagation, event, []);
+      const nextHostPort = ports[0];
+      try {
+        apply(addHostMessageListener, nextHostPort, [
+          &quot;message&quot;,
+          (event) =&gt; {
+            const data = apply(getMessageData, event, []);
+            if (typeof data === &quot;object&quot; &amp;&amp; data?.type === &quot;measure&quot;) {
+              sendHeight();
+            } else if (
+              typeof data === &quot;object&quot; &amp;&amp;
+              data?.type === &quot;widget-state-result&quot;
+            ) {
+              /** @type {unknown} */
+              const id = data.id;
+              if (typeof id !== &quot;number&quot;) {
+                return;
+              }
+              const pending = pendingStateWrites.get(id);
+              if (pending != null) {
+                pendingStateWrites.delete(id);
+                globalThis.clearTimeout(pending.timeout);
+                if (data.ok === true) {
+                  pending.resolve();
+                } else {
+                  pending.reject(persistenceError());
+                }
+              }
+            }
+          },
+        ]);
+        apply(startHostPort, nextHostPort, []);
+      } catch {
+        return;
+      }
+      hostPort = nextHostPort;
+      for (const [id, { serializedState }] of pendingStateWrites) {
+        postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
+      }
+      sendHeight();
+    },
+    { capture: true },
+  );
+  document.currentScript?.remove();
+  mediaQuery.addEventListener(&quot;change&quot;, syncTheme);
+  globalThis.addEventListener(&quot;click&quot;, (event) =&gt; {
+    if (event.defaultPrevented) {
+      return;
+    }
+    let element = null;
+    if (event.target instanceof globalThis.Element) {
+      element = event.target;
+    } else if (event.target instanceof globalThis.Node) {
+      element = event.target.parentElement;
+    }
+    const link = element?.closest(&quot;a[href]&quot;);
+    const href = link?.getAttribute(&quot;href&quot;);
+    if (href == null) {
+      return;
+    }
+    if (href.startsWith(&quot;#&quot;)) {
+      let id;
+      try {
+        id = decodeURIComponent(href.slice(1));
+      } catch {
+        return;
+      }
+      const target = id.length === 0 ? root : document.getElementById(id);
+      if (
+        target == null ||
+        globalThis.navigator.userActivation?.isActive !== true
+      ) {
+        return;
+      }
+      event.preventDefault();
+      postToHost(&quot;scroll-to&quot;, {
+        top: target.getBoundingClientRect().top + globalThis.scrollY,
+      });
+      return;
+    }
+    event.preventDefault();
+    openExternal({ href });
+  });
+  new ResizeObserver(sendHeight).observe(document.body);
+  syncTheme();
+})();
+&lt;/script&gt;
+&lt;div id=&quot;aigc-complete-flow&quot;&gt;
+  &lt;h3&gt;整体业务流程图&lt;/h3&gt;
+  &lt;div class=&quot;nav nav-pills&quot; role=&quot;tablist&quot; aria-label=&quot;流程板块&quot;&gt;
+    &lt;button type=&quot;button&quot; class=&quot;nav-link active&quot; id=&quot;aigc-tab-overview&quot; role=&quot;tab&quot; aria-controls=&quot;aigc-panel-overview&quot; aria-selected=&quot;true&quot;&gt;完整总览&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;aigc-tab-detection&quot; role=&quot;tab&quot; aria-controls=&quot;aigc-panel-detection&quot; aria-selected=&quot;false&quot;&gt;检测与复核&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;aigc-tab-rewrite&quot; role=&quot;tab&quot; aria-controls=&quot;aigc-panel-rewrite&quot; aria-selected=&quot;false&quot;&gt;改写与回滚&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;aigc-tab-output&quot; role=&quot;tab&quot; aria-controls=&quot;aigc-panel-output&quot; aria-selected=&quot;false&quot;&gt;输出与进度&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;af-legend text-small&quot; aria-label=&quot;图例&quot;&gt;
+    &lt;span&gt;&lt;b class=&quot;af-swatch af-normal&quot;&gt;&lt;/b&gt;主流程&lt;/span&gt;
+    &lt;span&gt;&lt;b class=&quot;af-swatch af-gate&quot;&gt;&lt;/b&gt;重点决策&lt;/span&gt;
+    &lt;span&gt;&lt;b class=&quot;af-swatch af-fallback&quot;&gt;&lt;/b&gt;降级 / 异常&lt;/span&gt;
+    &lt;span&gt;&lt;b class=&quot;af-swatch af-result&quot;&gt;&lt;/b&gt;最终输出&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div id=&quot;aigc-panel-overview&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;aigc-tab-overview&quot;&gt;&lt;svg class=&quot;af-diagram&quot; role=&quot;img&quot; aria-label=&quot;完整流程：请求鉴权、套餐权限、文本校验、创建任务、检测或改写、同步结果输出与进度查询&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
+  &lt;div id=&quot;aigc-panel-detection&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;aigc-tab-detection&quot; hidden&gt;&lt;svg class=&quot;af-diagram&quot; role=&quot;img&quot; aria-label=&quot;检测引擎：预处理与分块、并发判断及统计回退、加权聚合、独立概率测量、Azure条件复核与证据状态&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
+  &lt;div id=&quot;aigc-panel-rewrite&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;aigc-tab-rewrite&quot; hidden&gt;&lt;svg class=&quot;af-diagram&quot; role=&quot;img&quot; aria-label=&quot;改写流程：原文检测、Azure语义改写、OpenRouter异常兜底、表达扰动与规则调整、完整复检、质量评估及回滚&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
+  &lt;div id=&quot;aigc-panel-output&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;aigc-tab-output&quot; hidden&gt;&lt;svg class=&quot;af-diagram&quot; role=&quot;img&quot; aria-label=&quot;输出流程：同步POST返回完整业务JSON，GET任务接口返回脱敏进度和执行摘要，按Token隔离任务&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;style&gt;
+#aigc-complete-flow { color:var(--foreground); width:100%; }
+#aigc-complete-flow h3 { padding-right:90px; }
+#aigc-complete-flow .af-legend { display:flex; flex-wrap:wrap; gap:8px 18px; margin:14px 0 4px; }
+#aigc-complete-flow .af-legend span { display:inline-flex; align-items:center; gap:6px; }
+#aigc-complete-flow .af-swatch { display:inline-block; width:9px; height:9px; border-radius:2px; }
+#aigc-complete-flow .af-normal { background:var(--muted-foreground); }
+#aigc-complete-flow .af-gate { background:var(--viz-series-2); }
+#aigc-complete-flow .af-fallback { background:var(--viz-series-4); }
+#aigc-complete-flow .af-result { background:var(--viz-series-3); }
+#aigc-complete-flow .af-diagram { display:block; width:100%; overflow:visible; }
+#aigc-complete-flow .af-diagram text { fill:var(--foreground); font-family:var(--font-sans); }
+#aigc-complete-flow .af-section { font-weight:500; }
+#aigc-complete-flow .af-subtitle { fill:var(--muted-foreground); }
+#aigc-complete-flow .af-title { font-weight:500; }
+#aigc-complete-flow .af-link { fill:none; stroke:color-mix(in srgb,var(--foreground) 35%,var(--background)); stroke-width:1.5; }
+#aigc-complete-flow .af-label { fill:var(--muted-foreground); }
+#aigc-complete-flow .af-node { stroke:var(--border); stroke-width:1; fill:var(--background); }
+#aigc-complete-flow .af-node-gate { fill:color-mix(in srgb,var(--viz-series-2) 11%,var(--background)); }
+#aigc-complete-flow .af-node-fallback { fill:color-mix(in srgb,var(--viz-series-4) 9%,var(--background)); }
+#aigc-complete-flow .af-node-result { fill:color-mix(in srgb,var(--viz-series-3) 10%,var(--background)); }
+#aigc-complete-flow .af-keymark { fill:var(--viz-series-2); }
+#aigc-complete-flow .af-optional { stroke-dasharray:5 4; }
+&lt;/style&gt;
+&lt;script&gt;
+(() =&gt; {
+  const root = document.getElementById(&#x27;aigc-complete-flow&#x27;);
+  const NS = &#x27;http://www.w3.org/2000/svg&#x27;;
+  const views = [&#x27;overview&#x27;,&#x27;detection&#x27;,&#x27;rewrite&#x27;,&#x27;output&#x27;];
+  const node = (id,title,lines=[],kind=&#x27;normal&#x27;,tip=&#x27;&#x27;) =&gt; ({id,title,lines,kind,tip});
+  const flows = {
+    overview: [
+      {section:&#x27;01  接入与 API 授权&#x27;, rows:[
+        {cells:[node(&#x27;request&#x27;,&#x27;客户端发起同步 POST&#x27;,[&#x27;/api/scan 或 /api/reduce&#x27;,&#x27;Authorization: Bearer &lt;访问 Token&gt;&#x27;])]},
+        {cells:[node(&#x27;auth&#x27;,&#x27;重点 · 校验 Bearer Token&#x27;,[&#x27;匹配顺序：Pro → Free → API_TOKEN&#x27;],&#x27;gate&#x27;,&#x27;填写项目访问 Token；模型服务 API Key 由服务器保管。API_TOKEN 未配置时使用代码默认值。&#x27;),node(&#x27;unauth&#x27;,&#x27;鉴权失败 → HTTP 401&#x27;,[&#x27;缺少凭据 / Token 无效&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;request&#x27;,&#x27;auth&#x27;],[&#x27;auth&#x27;,&#x27;unauth&#x27;,&#x27;无效&#x27;]]},
+        {cells:[node(&#x27;plan&#x27;,&#x27;建立套餐与权限上下文&#x27;,[&#x27;Free：检测，默认上限 3,000 字符&#x27;,&#x27;Pro / 管理员：检测 + 改写 + 条件复核&#x27;,&#x27;默认上限 12,000 字符&#x27;],&#x27;normal&#x27;,&#x27;上限由 FREE_MAX_CHARS / PRO_MAX_CHARS 配置；管理员 API_TOKEN 还可查看全部任务。&#x27;)],edges:[[&#x27;auth&#x27;,&#x27;plan&#x27;,&#x27;有效&#x27;]]}
+      ]},
+      {section:&#x27;02  请求校验与任务建立&#x27;, rows:[
+        {cells:[node(&#x27;validate&#x27;,&#x27;校验文本、接口权限与请求字段&#x27;,[&#x27;清洗后 ≥ 50 字符；strip 后不超套餐上限&#x27;,&#x27;/reduce 需要 Pro 权限&#x27;],&#x27;gate&#x27;),node(&#x27;invalid&#x27;,&#x27;拒绝请求，尚未创建任务&#x27;,[&#x27;400：文本过短 / 超长&#x27;,&#x27;403：Free 调用改写&#x27;,&#x27;422：请求字段不合法&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;plan&#x27;,&#x27;validate&#x27;],[&#x27;validate&#x27;,&#x27;invalid&#x27;,&#x27;不通过&#x27;]]},
+        {cells:[node(&#x27;task&#x27;,&#x27;创建 task_id · 状态 running&#x27;,[&#x27;携带 request_id：派生固定任务 ID&#x27;,&#x27;未携带：服务端生成 ID&#x27;],&#x27;normal&#x27;,&#x27;唯一 request_id 为 UUID；task_id = scan-/reduce- + UUID 的32位hex。任务建立前可能暂时查到404。&#x27;),node(&#x27;conflict&#x27;,&#x27;request_id 已用 → HTTP 409&#x27;,[&#x27;保留已有任务&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;validate&#x27;,&#x27;task&#x27;,&#x27;通过&#x27;],[&#x27;task&#x27;,&#x27;conflict&#x27;,&#x27;重复&#x27;]]}
+      ]},
+      {section:&#x27;03  业务分流&#x27;, rows:[
+        {cells:[node(&#x27;scan&#x27;,&#x27;检测分支 · /api/scan&#x27;,[&#x27;调用完整检测引擎 run_check&#x27;,&#x27;预处理 → 分块评分 → 聚合&#x27;,&#x27;可选 PPL → 条件 Azure 复核&#x27;]),node(&#x27;reduce&#x27;,&#x27;改写分支 · /api/reduce&#x27;,[&#x27;原文完整检测 → 组合式改写&#x27;,&#x27;改写稿完整复检 → 质量评估&#x27;,&#x27;重点：未改善时回滚原文&#x27;],&#x27;gate&#x27;)],edges:[[&#x27;task&#x27;,&#x27;scan&#x27;,&#x27;scan&#x27;],[&#x27;task&#x27;,&#x27;reduce&#x27;,&#x27;reduce&#x27;]]},
+        {cells:[node(&#x27;scanresult&#x27;,&#x27;检测结果&#x27;,[&#x27;风险分、证据状态、分块与指标&#x27;,&#x27;模型 / 回退 / 复核元信息&#x27;]),node(&#x27;reduceresult&#x27;,&#x27;改写结果&#x27;,[&#x27;最终文本、rewrite、前后风险分&#x27;,&#x27;质量分、处理等级、修改记录&#x27;])],edges:[[&#x27;scan&#x27;,&#x27;scanresult&#x27;],[&#x27;reduce&#x27;,&#x27;reduceresult&#x27;]]}
+      ]},
+      {section:&#x27;04  结果输出与全程追踪&#x27;, rows:[
+        {cells:[node(&#x27;finish&#x27;,&#x27;记录脱敏摘要 · 任务 success&#x27;,[&#x27;HTTP 200 同步返回完整 JSON + task_id&#x27;],&#x27;result&#x27;,&#x27;success 表示主流程完成；模型回退、证据不足或改写回滚也可返回200。&#x27;),node(&#x27;error&#x27;,&#x27;主流程异常 · 任务 failed&#x27;,[&#x27;502：引擎结果无法解析&#x27;,&#x27;500：其他主流程异常&#x27;,&#x27;响应头 X-Task-ID&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;scanresult&#x27;,&#x27;finish&#x27;],[&#x27;reduceresult&#x27;,&#x27;finish&#x27;],[&#x27;scan&#x27;,&#x27;error&#x27;,&#x27;异常&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;],[&#x27;reduce&#x27;,&#x27;error&#x27;,&#x27;异常&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;]]},
+        {cells:[node(&#x27;poll&#x27;,&#x27;执行期间 / 结束后均可查询&#x27;,[&#x27;GET /api/tasks/{task_id}&#x27;,&#x27;进度、脱敏摘要、执行轨迹&#x27;,&#x27;success / failed 后停止轮询&#x27;],&#x27;result&#x27;,&#x27;POST 始终同步返回完整业务结果。轮询不返回原文、完整检测报告或改写内容；普通Token仅查自己的任务，管理员可查全部。&#x27;)],edges:[[&#x27;finish&#x27;,&#x27;poll&#x27;],[&#x27;error&#x27;,&#x27;poll&#x27;]]}
+      ]}
+    ],
+    detection: [
+      {section:&#x27;01  文本预处理与分块&#x27;, rows:[
+        {cells:[node(&#x27;clean&#x27;,&#x27;清洗 → 语言 / 文体识别&#x27;,[&#x27;统一换行、空白；识别 zh / en / mixed&#x27;,&#x27;计算全文句长、重复率、词汇多样性等&#x27;])]},
+        {cells:[node(&#x27;chunks&#x27;,&#x27;保留原文位置的句子分块&#x27;,[&#x27;目标 320 字符；最小目标 180&#x27;,&#x27;硬上限 480；长句 / 无标点文本也切分&#x27;],&#x27;normal&#x27;,&#x27;start/end 为清洗后文本的 Python 字符偏移。并发结果写回原顺序。&#x27;)],edges:[[&#x27;clean&#x27;,&#x27;chunks&#x27;]]}
+      ]},
+      {section:&#x27;02  逐块并发判断与容错&#x27;, rows:[
+        {cells:[node(&#x27;features&#x27;,&#x27;逐块提取真实统计特征&#x27;,[&#x27;异步工作队列，完成一块即补位&#x27;,&#x27;默认最多 10 路，受配置与共享额度限制&#x27;],&#x27;normal&#x27;,&#x27;并发数 = min(块数, SCAN_CHUNK_CONCURRENCY, 提供方请求上限)，硬上限10。模型端仍可能自行排队。&#x27;)],edges:[[&#x27;chunks&#x27;,&#x27;features&#x27;]]},
+        {cells:[node(&#x27;skip&#x27;,&#x27;重点 · 短块 / 列表需跳过模型？&#x27;,[&#x27;按语言、句子数、字数和列表占比判断&#x27;],&#x27;gate&#x27;),node(&#x27;stats&#x27;,&#x27;统计模式&#x27;,[&#x27;规则跳过：heuristic_skip&#x27;,&#x27;模型失败：heuristic_fallback&#x27;],&#x27;fallback&#x27;,&#x27;统计模式只使用 feature_score；置信度上限0.38，不伪装为模型成功。&#x27;)],edges:[[&#x27;features&#x27;,&#x27;skip&#x27;],[&#x27;skip&#x27;,&#x27;stats&#x27;,&#x27;是&#x27;]]},
+        {cells:[node(&#x27;qwen&#x27;,&#x27;Qwen 独立判断 + 结构校验&#x27;,[&#x27;服务器 DETECTION_PROVIDER 选择&#x27;,&#x27;Ollama 或百炼；输入文本与文体&#x27;],&#x27;normal&#x27;,&#x27;请求 api_source 不能切换提供方；仅与实际提供方一致时，model 才可覆盖默认模型。Qwen不读取数值特征，避免重复锚定。&#x27;)],edges:[[&#x27;skip&#x27;,&#x27;qwen&#x27;,&#x27;否&#x27;],[&#x27;qwen&#x27;,&#x27;stats&#x27;,&#x27;失败&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;]]},
+        {cells:[node(&#x27;blend&#x27;,&#x27;有效模型：70% 判断 + 30% 统计&#x27;,[&#x27;风格 signals 只作解释&#x27;]),node(&#x27;statsonly&#x27;,&#x27;跳过 / 失败：100% 统计&#x27;,[&#x27;不套用 70 / 30 模型融合&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;qwen&#x27;,&#x27;blend&#x27;,&#x27;有效&#x27;],[&#x27;stats&#x27;,&#x27;statsonly&#x27;,&#x27;回退&#x27;,&#x27;&#x27;,&#x27;rail&#x27;]]},
+        {cells:[node(&#x27;adjust&#x27;,&#x27;分块规则修正 · 只执行一次&#x27;,[&#x27;文体修正；短文本向 50 收缩&#x27;,&#x27;单句、短文、模型分歧降低置信度&#x27;],&#x27;gate&#x27;,&#x27;学术/商业 -8，列表 -15，翻译 -6，营销 +3；短于120字符向50收缩。模型与统计差值≥35时置信度最多0.44。&#x27;)],edges:[[&#x27;blend&#x27;,&#x27;adjust&#x27;],[&#x27;statsonly&#x27;,&#x27;adjust&#x27;]]}
+      ]},
+      {section:&#x27;03  全文聚合与独立指标&#x27;, rows:[
+        {cells:[node(&#x27;aggregate&#x27;,&#x27;按分块字符数加权聚合&#x27;,[&#x27;全文风险分 + 置信度 + 高风险块&#x27;,&#x27;大量统计回退 / 明显分歧 → 保守结论&#x27;],&#x27;normal&#x27;,&#x27;置信度 high≥0.72 / medium≥0.45；统计回退权重≥50%、存在分歧或全文&lt;120字符时保持low。高风险块阈值为65。&#x27;)],edges:[[&#x27;adjust&#x27;,&#x27;aggregate&#x27;]]},
+        {cells:[node(&#x27;ppl&#x27;,&#x27;可选 · 独立 CPU 原文概率测量&#x27;,[&#x27;对清洗后的整篇文本计算 NLL / PPL&#x27;,&#x27;disabled / measured / unavailable&#x27;],&#x27;normal&#x27;,&#x27;此步在分块聚合后执行。未开启或失败时PPL为null；失败添加warning并继续。&#x27;),node(&#x27;pplnote&#x27;,&#x27;重点 · PPL 不参与风险分&#x27;,[&#x27;used_in_risk_score = false&#x27;,&#x27;Binoculars 当前为 null&#x27;],&#x27;gate&#x27;)],edges:[[&#x27;aggregate&#x27;,&#x27;ppl&#x27;],[&#x27;ppl&#x27;,&#x27;pplnote&#x27;,&#x27;附加&#x27;,&#x27;optional&#x27;]]}
+      ]},
+      {section:&#x27;04  Pro 条件复核 · 固定 Azure&#x27;, rows:[
+        {cells:[node(&#x27;reviewgate&#x27;,&#x27;重点 · 开关开启且 Pro 有复核权限？&#x27;,[&#x27;再满足任一：低置信度 / 风险分 40–65&#x27;,&#x27;或正式文体且高风险块 ≤ 1&#x27;],&#x27;gate&#x27;),node(&#x27;noreview&#x27;,&#x27;未触发 / 提供方失败&#x27;,[&#x27;保留主检测结果&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;ppl&#x27;,&#x27;reviewgate&#x27;],[&#x27;reviewgate&#x27;,&#x27;noreview&#x27;,&#x27;否&#x27;]]},
+        {cells:[node(&#x27;azure&#x27;,&#x27;Azure 对全文与代表片段复核&#x27;,[&#x27;复核不读取主检测数值分&#x27;,&#x27;失败记录轨迹并继续返回结果&#x27;],&#x27;normal&#x27;,&#x27;正式文体包括 academic / business_doc / list_or_table。复核失败不会转OpenRouter。&#x27;)],edges:[[&#x27;reviewgate&#x27;,&#x27;azure&#x27;,&#x27;是&#x27;],[&#x27;azure&#x27;,&#x27;noreview&#x27;,&#x27;失败&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;]]},
+        {cells:[node(&#x27;reviewmerge&#x27;,&#x27;融合文档分 · 保留分块分数&#x27;,[&#x27;原置信度 low：60% 主分 + 40% 复核&#x27;,&#x27;其他：72% 主分 + 28% 复核&#x27;],&#x27;gate&#x27;,&#x27;review.scope=document_only；主分与复核差值≥35时仍标记证据不足。复核自报高置信度不直接提升至high。&#x27;)],edges:[[&#x27;azure&#x27;,&#x27;reviewmerge&#x27;,&#x27;有效&#x27;]]}
+      ]},
+      {section:&#x27;05  检测结果封装&#x27;, rows:[
+        {cells:[node(&#x27;assessment&#x27;,&#x27;按证据状态确定最终 label&#x27;,[&#x27;low → Insufficient Evidence&#x27;,&#x27;其余 → 按风险区间输出标签&#x27;],&#x27;gate&#x27;,&#x27;score_label始终保留分数区间标签：≥70 AI Generated，≥40 Mixed，其余Human Written。risk_score未校准，不是来源概率。&#x27;)],edges:[[&#x27;reviewmerge&#x27;,&#x27;assessment&#x27;],[&#x27;noreview&#x27;,&#x27;assessment&#x27;,&#x27;&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;]]},
+        {cells:[node(&#x27;detectout&#x27;,&#x27;返回 run_check 完整结果&#x27;,[&#x27;风险分 / 置信度 / 证据状态 / warnings&#x27;,&#x27;chunks / segments / metrics / probability&#x27;,&#x27;review / engine / plan&#x27;],&#x27;result&#x27;,&#x27;/scan直接输出；/reduce在原文检测、改写后复检时各复用一次完整引擎。&#x27;)],edges:[[&#x27;assessment&#x27;,&#x27;detectout&#x27;]]}
+      ]}
+    ],
+    rewrite: [
+      {section:&#x27;01  原文完整检测&#x27;, rows:[
+        {cells:[node(&#x27;original&#x27;,&#x27;run_check · original_scan&#x27;,[&#x27;获取原文风险分与高风险片段&#x27;,&#x27;本轮可含 PPL 测量与 Azure 条件复核&#x27;])]}
+      ]},
+      {section:&#x27;02  组合式改写与逐级兜底&#x27;, rows:[
+        {cells:[node(&#x27;semantic&#x27;,&#x27;Step 1 · Azure 深度语义改写&#x27;,[&#x27;使用原文检测结果制定改写目标&#x27;]),node(&#x27;openrouter&#x27;,&#x27;OpenRouter 语义改写兜底&#x27;,[&#x27;仅 Azure 异常时进入&#x27;],&#x27;fallback&#x27;,&#x27;Azure返回有效但未发生文本变化时，直接进入未改写路径，不再尝试OpenRouter。&#x27;)],edges:[[&#x27;original&#x27;,&#x27;semantic&#x27;],[&#x27;semantic&#x27;,&#x27;openrouter&#x27;,&#x27;异常&#x27;]]},
+        {cells:[node(&#x27;applied&#x27;,&#x27;重点 · 语义步骤产生有效改写？&#x27;,[&#x27;校验结构、清洗文本、确认文本有变化&#x27;],&#x27;gate&#x27;),node(&#x27;unchanged&#x27;,&#x27;无有效改写 / 全部失败&#x27;,[&#x27;保留原文；rewrite=false&#x27;,&#x27;跳过表达扰动与规则调整&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;semantic&#x27;,&#x27;applied&#x27;,&#x27;有效返回&#x27;],[&#x27;openrouter&#x27;,&#x27;applied&#x27;,&#x27;有效返回&#x27;],[&#x27;applied&#x27;,&#x27;unchanged&#x27;,&#x27;否&#x27;],[&#x27;openrouter&#x27;,&#x27;unchanged&#x27;,&#x27;仍失败&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;]]},
+        {cells:[node(&#x27;perturb&#x27;,&#x27;Step 2 · Qwen 表达扰动&#x27;,[&#x27;跟随服务器 Ollama / 百炼提供方&#x27;,&#x27;失败 / 无变化 → 保留当前稿继续&#x27;])],edges:[[&#x27;applied&#x27;,&#x27;perturb&#x27;,&#x27;是&#x27;]]},
+        {cells:[node(&#x27;rules&#x27;,&#x27;Step 3 · 本地确定性规则调整&#x27;,[&#x27;合并过齐列表、补回原文细节锚点&#x27;,&#x27;无调整 → 保留当前稿继续&#x27;])],edges:[[&#x27;perturb&#x27;,&#x27;rules&#x27;]]}
+      ]},
+      {section:&#x27;03  完整复检与质量评估&#x27;, rows:[
+        {cells:[node(&#x27;rescan&#x27;,&#x27;run_check · reduced_scan&#x27;,[&#x27;清洗候选稿；空值回退原文&#x27;,&#x27;无有效改写时，原文仍会再检测一次&#x27;,&#x27;本轮同样可含 PPL 与 Azure 条件复核&#x27;],&#x27;gate&#x27;)],edges:[[&#x27;rules&#x27;,&#x27;rescan&#x27;],[&#x27;unchanged&#x27;,&#x27;rescan&#x27;,&#x27;&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;]]},
+        {cells:[node(&#x27;quality&#x27;,&#x27;计算改写质量分&#x27;,[&#x27;成功改写：60% 内容保留 + 40% 风险下降&#x27;,&#x27;未改写：质量分 55，处理等级 light&#x27;],&#x27;normal&#x27;,&#x27;内容保留由词汇重叠与长度比估算；质量分不是事实准确率。changes最多8条；model是light/moderate/deep处理等级。&#x27;)],edges:[[&#x27;rescan&#x27;,&#x27;quality&#x27;]]}
+      ]},
+      {section:&#x27;04  风险下降验证与回滚保护&#x27;, rows:[
+        {cells:[node(&#x27;successgate&#x27;,&#x27;rewrite 标记为 true？&#x27;,[],&#x27;gate&#x27;),node(&#x27;fallbackout&#x27;,&#x27;未改写 · 输出原文&#x27;,[&#x27;rewrite=false；quality_score=55&#x27;,&#x27;model=light；changes=[]&#x27;],&#x27;result&#x27;)],edges:[[&#x27;quality&#x27;,&#x27;successgate&#x27;],[&#x27;successgate&#x27;,&#x27;fallbackout&#x27;,&#x27;否&#x27;]]},
+        {cells:[node(&#x27;improved&#x27;,&#x27;重点 · 复检风险分 &lt; 原文风险分？&#x27;,[],&#x27;gate&#x27;),node(&#x27;rollback&#x27;,&#x27;未下降 → 回滚原文&#x27;,[&#x27;after=before；rewrite=false&#x27;,&#x27;质量分 55；light；清空 changes&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;successgate&#x27;,&#x27;improved&#x27;,&#x27;是&#x27;],[&#x27;improved&#x27;,&#x27;rollback&#x27;,&#x27;否&#x27;]]},
+        {cells:[node(&#x27;keep&#x27;,&#x27;保留改写稿&#x27;,[&#x27;rewrite=true；返回下降后的风险分&#x27;,&#x27;三步均应用为 deep；否则 moderate&#x27;],&#x27;result&#x27;)],edges:[[&#x27;improved&#x27;,&#x27;keep&#x27;,&#x27;是&#x27;]]},
+        {cells:[node(&#x27;reduceout&#x27;,&#x27;返回改写摘要 + 最终保留文本&#x27;,[&#x27;reduced / rewrite / 前后风险分&#x27;,&#x27;前后证据状态 / quality_score&#x27;,&#x27;model / changes / task_id&#x27;],&#x27;result&#x27;,&#x27;不返回两次检测的完整chunks、metrics或probability；过程信息通过任务轨迹查询。&#x27;)],edges:[[&#x27;keep&#x27;,&#x27;reduceout&#x27;],[&#x27;rollback&#x27;,&#x27;reduceout&#x27;,&#x27;&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;],[&#x27;fallbackout&#x27;,&#x27;reduceout&#x27;,&#x27;&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;]]}
+      ]}
+    ],
+    output: [
+      {section:&#x27;01  发起请求与定位任务&#x27;, rows:[
+        {cells:[node(&#x27;uuid&#x27;,&#x27;客户端生成唯一 request_id（可选）&#x27;,[&#x27;UUID → 预先派生 scan-/reduce- + hex&#x27;,&#x27;未提供时，task_id 随 POST 结果返回&#x27;])]},
+        {cells:[node(&#x27;post&#x27;,&#x27;POST /api/scan 或 /api/reduce&#x27;,[&#x27;完成鉴权和校验后创建任务&#x27;,&#x27;请求保持等待，业务同步执行&#x27;],&#x27;gate&#x27;),node(&#x27;preerrors&#x27;,&#x27;任务创建前拒绝&#x27;,[&#x27;401 / 400 / 403 / 422 / 409&#x27;,&#x27;重复 request_id 不覆盖旧任务&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;uuid&#x27;,&#x27;post&#x27;],[&#x27;post&#x27;,&#x27;preerrors&#x27;,&#x27;拒绝&#x27;]]}
+      ]},
+      {section:&#x27;02  业务执行与进度观察&#x27;, rows:[
+        {cells:[node(&#x27;execute&#x27;,&#x27;服务端执行检测 / 改写&#x27;,[&#x27;写入脱敏事件、阶段与分块完成数&#x27;,&#x27;任务 running，整体进度单调不减&#x27;]),node(&#x27;get&#x27;,&#x27;客户端 GET /api/tasks/{task_id}&#x27;,[&#x27;使用相同访问 Token&#x27;,&#x27;查询当前进度与脱敏执行轨迹&#x27;],&#x27;normal&#x27;,&#x27;普通Token只能查自己的任务；管理员API_TOKEN可查全部。不存在、不可见、过期均返回404；任务建立前也可能短暂404。&#x27;)],edges:[[&#x27;post&#x27;,&#x27;execute&#x27;],[&#x27;execute&#x27;,&#x27;get&#x27;,&#x27;轮询&#x27;,&#x27;optional&#x27;]]},
+        {cells:[node(&#x27;terminal&#x27;,&#x27;主流程完成 / 异常&#x27;,[&#x27;success：进度 100&#x27;,&#x27;failed：保留失败前进度&#x27;]),node(&#x27;progress&#x27;,&#x27;轮询返回 result 与 events&#x27;,[&#x27;stage / progress / message&#x27;,&#x27;当前轮次 completed_chunks / total_chunks&#x27;,&#x27;running 继续；success / failed 停止&#x27;],&#x27;normal&#x27;,&#x27;进度为真实阶段/分块的估算，不是耗时百分比；运行中最多99。改写复检时当前分块计数重置，整体进度不回退。&#x27;)],edges:[[&#x27;execute&#x27;,&#x27;terminal&#x27;],[&#x27;get&#x27;,&#x27;progress&#x27;]]}
+      ]},
+      {section:&#x27;03  同步 POST 返回完整业务结果&#x27;, rows:[
+        {cells:[node(&#x27;http200&#x27;,&#x27;HTTP 200 · 完整业务 JSON + task_id&#x27;,[&#x27;模型回退、证据不足、改写回滚&#x27;,&#x27;均可能是正常完成&#x27;],&#x27;result&#x27;),node(&#x27;httpfail&#x27;,&#x27;HTTP 502 / 500 · 错误 detail&#x27;,[&#x27;任务 failed；响应头 X-Task-ID&#x27;,&#x27;可继续查询脱敏排障轨迹&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;terminal&#x27;,&#x27;http200&#x27;,&#x27;完成&#x27;],[&#x27;terminal&#x27;,&#x27;httpfail&#x27;,&#x27;异常&#x27;]]},
+        {cells:[node(&#x27;scanjson&#x27;,&#x27;/scan 输出&#x27;,[&#x27;risk_score / ai_probability&#x27;,&#x27;label / score_label / assessment_status&#x27;,&#x27;confidence / chunks / segments&#x27;,&#x27;metrics / probability / review / engine&#x27;],&#x27;result&#x27;),node(&#x27;reducejson&#x27;,&#x27;/reduce 输出&#x27;,[&#x27;reduced / rewrite&#x27;,&#x27;ai_probability / ai_reduced_probability&#x27;,&#x27;quality_score / model / changes&#x27;,&#x27;detection_status_before / after&#x27;],&#x27;result&#x27;)],edges:[[&#x27;http200&#x27;,&#x27;scanjson&#x27;,&#x27;检测&#x27;],[&#x27;http200&#x27;,&#x27;reducejson&#x27;,&#x27;改写&#x27;]]}
+      ]},
+      {section:&#x27;04  结果解读与查询边界&#x27;, rows:[
+        {cells:[node(&#x27;semantics&#x27;,&#x27;重点 · 分数与状态口径&#x27;,[&#x27;risk_score：未校准的 AI 风格风险分&#x27;,&#x27;ai_probability：同一分数的历史字符串字段&#x27;,&#x27;low 置信度：证据不足&#x27;,&#x27;PPL 独立实测；当前不参与风险评分&#x27;],&#x27;gate&#x27;),node(&#x27;privacy&#x27;,&#x27;任务查询仅保留脱敏信息&#x27;,[&#x27;阶段、分块数、模型调用、分数与耗时&#x27;,&#x27;无原文 / 改写文本 / 完整检测报告&#x27;,&#x27;GET /api/tasks 可筛选和分页&#x27;],&#x27;normal&#x27;,&#x27;summary.percentages为启发式展示权重，不代表内容比例；segments/sentences的实际粒度均为分块。原文与改写文本仅在同步POST业务响应中返回。&#x27;)],edges:[[&#x27;scanjson&#x27;,&#x27;semantics&#x27;],[&#x27;reducejson&#x27;,&#x27;semantics&#x27;],[&#x27;progress&#x27;,&#x27;privacy&#x27;,&#x27;&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;]]}
+      ]}
+    ]
+  };
+  function el(tag,attrs={},text) {
+    const e=document.createElementNS(NS,tag);
+    Object.entries(attrs).forEach(([k,v])=&gt;e.setAttribute(k,String(v)));
+    if(text!==undefined)e.textContent=text;
+    return e;
+  }
+  const measureCanvas=document.createElement(&#x27;canvas&#x27;);
+  const ctx=measureCanvas.getContext(&#x27;2d&#x27;);
+  function wrap(text,maxWidth,size,weight=400) {
+    ctx.font=weight+&#x27; &#x27;+size+&#x27;px &#x27;+(getComputedStyle(root).fontFamily||&#x27;sans-serif&#x27;);
+    const words=String(text).match(/[A-Za-z0-9_./{}&lt;&gt;:+-]+|\s+|[^\x00-\x7F]|./g)||[];
+    const out=[];let line=&#x27;&#x27;;
+    for(const token of words){
+      if(ctx.measureText(line+token).width&gt;maxWidth &amp;&amp; line){out.push(line.trim());line=&#x27;&#x27;;}
+      if(ctx.measureText(token).width&gt;maxWidth){
+        for(const ch of token){if(ctx.measureText(line+ch).width&gt;maxWidth&amp;&amp;line){out.push(line.trim());line=&#x27;&#x27;;}line+=ch;}
+      } else line+=token;
+    }
+    if(line.trim())out.push(line.trim());
+    return out;
+  }
+  function draw(key,width){
+    const svg=root.querySelector(&#x27;#aigc-panel-&#x27;+key+&#x27; svg&#x27;);
+    svg.replaceChildren();
+    const base=parseFloat(getComputedStyle(root).getPropertyValue(&#x27;--font-size-base&#x27;))||14;
+    const font=base,small=Math.max(11,base-2),line=font*1.5,subline=small*1.6;
+    const narrow=width&lt;590,margin=narrow?14:20,gap=narrow?0:48;
+    const full=width-margin*2,col=(full-gap)/2;
+    const registry=new Map(),links=[],sections=[],nodes=[];
+    let y=14;
+    flows[key].forEach((section,si)=&gt;{
+      if(si)y+=25;
+      sections.push({title:section.section,y});y+=35;
+      section.rows.forEach(row=&gt;{
+        if(row.edges)links.push(...row.edges);
+        if(narrow){
+          row.cells.forEach((n,ni)=&gt;{
+            const mainLines=wrap(n.title,full-34,font,500);
+            const subLines=n.lines.flatMap(t=&gt;wrap(t,full-34,small));
+            const h=24+mainLines.length*line+subLines.length*subline+(subLines.length?5:0);
+            const item={...n,x:margin,y,w:full,h,mainLines,subLines};
+            registry.set(n.id,item);nodes.push(item);y+=h+(ni&lt;row.cells.length-1?40:0);
+          });y+=38;
+        }else{
+          const entries=row.cells.map((n,i)=&gt;{
+            const w=row.cells.length===1?Math.min(full,470):col;
+            const x=row.cells.length===1?(width-w)/2:margin+i*(col+gap);
+            const mainLines=wrap(n.title,w-34,font,500);
+            const subLines=n.lines.flatMap(t=&gt;wrap(t,w-34,small));
+            const h=24+mainLines.length*line+subLines.length*subline+(subLines.length?5:0);
+            return {...n,x,y,w,h,mainLines,subLines};
+          });
+          entries.forEach(n=&gt;{registry.set(n.id,n);nodes.push(n);});
+          y+=Math.max(...entries.map(n=&gt;n.h))+40;
+        }
+      });
+    });
+    const height=y-20;svg.setAttribute(&#x27;viewBox&#x27;,`0 0 ${width} ${height}`);svg.setAttribute(&#x27;height&#x27;,height);
+    const defs=el(&#x27;defs&#x27;);
+    const marker=el(&#x27;marker&#x27;,{id:&#x27;af-arrow-&#x27;+key,viewBox:&#x27;0 0 8 8&#x27;,refX:7,refY:4,markerWidth:6,markerHeight:6,orient:&#x27;auto-start-reverse&#x27;});
+    marker.append(el(&#x27;path&#x27;,{d:&#x27;M 1 1 L 7 4 L 1 7&#x27;,fill:&#x27;none&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1.2}));defs.append(marker);svg.append(defs);
+    const edgeLayer=el(&#x27;g&#x27;,{&#x27;aria-hidden&#x27;:&#x27;true&#x27;});svg.append(edgeLayer);
+    const labelLayer=el(&#x27;g&#x27;,{&#x27;aria-hidden&#x27;:&#x27;true&#x27;}),drawnLabels=new Set();
+    links.forEach(([from,to,label=&#x27;&#x27;,style=&#x27;&#x27;,route=&#x27;&#x27;])=&gt;{
+      const a=registry.get(from),b=registry.get(to);if(!a||!b)return;
+      let d,lx,ly,anchor=&#x27;middle&#x27;;
+      const sideBySide=!narrow&amp;&amp;Math.abs(a.y-b.y)&lt;3;
+      const backwards=b.y&lt;a.y;
+      const mobileSkip=narrow&amp;&amp;nodes.some(n=&gt;n.id!==a.id&amp;&amp;n.id!==b.id&amp;&amp;n.y&gt;a.y&amp;&amp;n.y&lt;b.y);
+      const rail=route===&#x27;rail&#x27;||backwards||mobileSkip;
+      if(sideBySide){
+        const left=a.x&lt;b.x,start=left?a.x+a.w:a.x,end=left?b.x:b.x+b.w;
+        const yy=Math.min(a.y+a.h/2,b.y+b.h/2);d=`M ${start} ${yy} H ${end}`;lx=(start+end)/2;ly=yy-8;
+      }else if(rail){
+        const right=a.x+a.w/2&gt;=width/2;
+        const railX=right?width-(narrow?3:6):(narrow?3:6);
+        const ax=right?a.x+a.w:a.x,bx=b.x+b.w/2;
+        const ay=a.y+a.h*.67,by=b.y-14;
+        d=`M ${ax} ${ay} H ${railX} V ${by} H ${bx} V ${b.y}`;
+        lx=right?railX-7:railX+7;ly=a.y+a.h+18;anchor=right?&#x27;end&#x27;:&#x27;start&#x27;;
+      }else{
+        const ax=a.x+a.w/2,bx=b.x+b.w/2,ay=a.y+a.h,by=b.y,mid=(ay+by)/2;
+        d=`M ${ax} ${ay} V ${mid} H ${bx} V ${by}`;lx=Math.abs(ax-bx)&lt;20?ax+8:(ax+bx)/2;ly=mid-6;anchor=Math.abs(ax-bx)&lt;20?&#x27;start&#x27;:&#x27;middle&#x27;;
+      }
+      edgeLayer.append(el(&#x27;path&#x27;,{d,class:&#x27;af-link&#x27;+(style===&#x27;optional&#x27;?&#x27; af-optional&#x27;:&#x27;&#x27;),&#x27;marker-end&#x27;:`url(#af-arrow-${key})`}));
+      const labelKey=[label,Math.round(lx),Math.round(ly)].join(&#x27;:&#x27;);
+      if(label&amp;&amp;!drawnLabels.has(labelKey)){
+        drawnLabels.add(labelKey);
+        const t=el(&#x27;text&#x27;,{x:lx,y:ly,class:&#x27;af-label&#x27;,&#x27;font-size&#x27;:small,&#x27;text-anchor&#x27;:anchor},label);
+        labelLayer.append(t);
+      }
+    });
+    sections.forEach(s=&gt;{
+      const lines=wrap(s.title,full,font,500);
+      ctx.font=&#x27;500 &#x27;+font+&#x27;px &#x27;+(getComputedStyle(root).fontFamily||&#x27;sans-serif&#x27;);
+      svg.append(el(&#x27;rect&#x27;,{x:margin-3,y:s.y-2,width:ctx.measureText(lines[0]).width+10,height:font+9,fill:&#x27;var(--background)&#x27;}));
+      const t=el(&#x27;text&#x27;,{x:margin,y:s.y+font,class:&#x27;af-section&#x27;,&#x27;font-size&#x27;:font},lines[0]);
+      svg.append(t);
+    });
+    nodes.forEach(n=&gt;{
+      const g=el(&#x27;g&#x27;,{&#x27;data-node&#x27;:n.id});
+      if(n.tip)g.setAttribute(&#x27;data-tooltip&#x27;,n.tip);
+      g.append(el(&#x27;title&#x27;,{},[n.title,...n.lines,n.tip].filter(Boolean).join(&#x27;；&#x27;)));
+      const shape=el(&#x27;rect&#x27;,{x:n.x,y:n.y,width:n.w,height:n.h,rx:n.kind===&#x27;gate&#x27;?3:10,class:&#x27;af-node&#x27;+(n.kind!==&#x27;normal&#x27;?&#x27; af-node-&#x27;+n.kind:&#x27;&#x27;)});g.append(shape);
+      if(n.kind===&#x27;gate&#x27;)g.append(el(&#x27;rect&#x27;,{x:n.x+1,y:n.y+10,width:3,height:n.h-20,rx:1,class:&#x27;af-keymark&#x27;}));
+      let ty=n.y+16+font*.8;
+      n.mainLines.forEach(t=&gt;{g.append(el(&#x27;text&#x27;,{x:n.x+n.w/2,y:ty,&#x27;text-anchor&#x27;:&#x27;middle&#x27;,&#x27;font-size&#x27;:font,class:&#x27;af-title&#x27;},t));ty+=line;});
+      if(n.subLines.length)ty+=3;
+      n.subLines.forEach(t=&gt;{g.append(el(&#x27;text&#x27;,{x:n.x+n.w/2,y:ty,&#x27;text-anchor&#x27;:&#x27;middle&#x27;,&#x27;font-size&#x27;:small,class:&#x27;af-subtitle&#x27;},t));ty+=subline;});
+      svg.append(g);
+    });
+    svg.append(labelLayer);
+  }
+  function redraw(){
+    const width=Math.round(root.getBoundingClientRect().width);
+    if(width&gt;0)views.forEach(key=&gt;draw(key,width));
+  }
+  function activate(key,save=false){
+    if(!views.includes(key))key=&#x27;overview&#x27;;
+    views.forEach(v=&gt;{
+      const active=v===key;
+      const button=root.querySelector(&#x27;#aigc-tab-&#x27;+v);
+      button.setAttribute(&#x27;aria-selected&#x27;,String(active));button.classList.toggle(&#x27;active&#x27;,active);
+      root.querySelector(&#x27;#aigc-panel-&#x27;+v).hidden=!active;
+    });
+    if(save&amp;&amp;window.openai?.setWidgetState)window.openai.setWidgetState({modelContent:{flow_view:key},privateContent:null}).catch(()=&gt;{});
+  }
+  views.forEach(key=&gt;root.querySelector(&#x27;#aigc-tab-&#x27;+key).addEventListener(&#x27;click&#x27;,()=&gt;activate(key,true)));
+  const state=window.openai?.widgetState;
+  activate(state?.modelContent?.flow_view||&#x27;overview&#x27;);
+  window.addEventListener(&#x27;openai:set_globals&#x27;,event=&gt;{
+    const s=event.detail?.globals?.widgetState;
+    if(s)activate(s.modelContent?.flow_view||&#x27;overview&#x27;);
+  });
+  new ResizeObserver(redraw).observe(root);
+  if(document.fonts?.ready)document.fonts.ready.then(redraw);
+  redraw();
+})();
+&lt;/script&gt;
+
+&lt;script&gt;!function(t,e){&quot;object&quot;==typeof exports&amp;&amp;&quot;undefined&quot;!=typeof module?e(exports):&quot;function&quot;==typeof define&amp;&amp;define.amd?define([&quot;exports&quot;],e):e((t=&quot;undefined&quot;!=typeof globalThis?globalThis:t||self).FloatingUICore={})}(this,(function(t){&quot;use strict&quot;;const e=[&quot;top&quot;,&quot;right&quot;,&quot;bottom&quot;,&quot;left&quot;],n=[&quot;start&quot;,&quot;end&quot;],i=e.reduce(((t,e)=&gt;t.concat(e,e+&quot;-&quot;+n[0],e+&quot;-&quot;+n[1])),[]),o=Math.min,r=Math.max,a={left:&quot;right&quot;,right:&quot;left&quot;,bottom:&quot;top&quot;,top:&quot;bottom&quot;},l={start:&quot;end&quot;,end:&quot;start&quot;};function s(t,e,n){return r(t,o(e,n))}function f(t,e){return&quot;function&quot;==typeof t?t(e):t}function c(t){return t.split(&quot;-&quot;)[0]}function m(t){return t.split(&quot;-&quot;)[1]}function u(t){return&quot;x&quot;===t?&quot;y&quot;:&quot;x&quot;}function d(t){return&quot;y&quot;===t?&quot;height&quot;:&quot;width&quot;}const g=new Set([&quot;top&quot;,&quot;bottom&quot;]);function p(t){return g.has(c(t))?&quot;y&quot;:&quot;x&quot;}function h(t){return u(p(t))}function y(t,e,n){void 0===n&amp;&amp;(n=!1);const i=m(t),o=h(t),r=d(o);let a=&quot;x&quot;===o?i===(n?&quot;end&quot;:&quot;start&quot;)?&quot;right&quot;:&quot;left&quot;:&quot;start&quot;===i?&quot;bottom&quot;:&quot;top&quot;;return e.reference[r]&gt;e.floating[r]&amp;&amp;(a=P(a)),[a,P(a)]}function w(t){return t.replace(/start|end/g,(t=&gt;l[t]))}const x=[&quot;left&quot;,&quot;right&quot;],v=[&quot;right&quot;,&quot;left&quot;],b=[&quot;top&quot;,&quot;bottom&quot;],A=[&quot;bottom&quot;,&quot;top&quot;];function R(t,e,n,i){const o=m(t);let r=function(t,e,n){switch(t){case&quot;top&quot;:case&quot;bottom&quot;:return n?e?v:x:e?x:v;case&quot;left&quot;:case&quot;right&quot;:return e?b:A;default:return[]}}(c(t),&quot;start&quot;===n,i);return o&amp;&amp;(r=r.map((t=&gt;t+&quot;-&quot;+o)),e&amp;&amp;(r=r.concat(r.map(w)))),r}function P(t){return t.replace(/left|right|bottom|top/g,(t=&gt;a[t]))}function D(t){return&quot;number&quot;!=typeof t?function(t){return{top:0,right:0,bottom:0,left:0,...t}}(t):{top:t,right:t,bottom:t,left:t}}function T(t){const{x:e,y:n,width:i,height:o}=t;return{width:i,height:o,top:n,left:e,right:e+i,bottom:n+o,x:e,y:n}}function O(t,e,n){let{reference:i,floating:o}=t;const r=p(e),a=h(e),l=d(a),s=c(e),f=&quot;y&quot;===r,u=i.x+i.width/2-o.width/2,g=i.y+i.height/2-o.height/2,y=i[l]/2-o[l]/2;let w;switch(s){case&quot;top&quot;:w={x:u,y:i.y-o.height};break;case&quot;bottom&quot;:w={x:u,y:i.y+i.height};break;case&quot;right&quot;:w={x:i.x+i.width,y:g};break;case&quot;left&quot;:w={x:i.x-o.width,y:g};break;default:w={x:i.x,y:i.y}}switch(m(e)){case&quot;start&quot;:w[a]-=y*(n&amp;&amp;f?-1:1);break;case&quot;end&quot;:w[a]+=y*(n&amp;&amp;f?-1:1)}return w}async function E(t,e){var n;void 0===e&amp;&amp;(e={});const{x:i,y:o,platform:r,rects:a,elements:l,strategy:s}=t,{boundary:c=&quot;clippingAncestors&quot;,rootBoundary:m=&quot;viewport&quot;,elementContext:u=&quot;floating&quot;,altBoundary:d=!1,padding:g=0}=f(e,t),p=D(g),h=l[d?&quot;floating&quot;===u?&quot;reference&quot;:&quot;floating&quot;:u],y=T(await r.getClippingRect({element:null==(n=await(null==r.isElement?void 0:r.isElement(h)))||n?h:h.contextElement||await(null==r.getDocumentElement?void 0:r.getDocumentElement(l.floating)),boundary:c,rootBoundary:m,strategy:s})),w=&quot;floating&quot;===u?{x:i,y:o,width:a.floating.width,height:a.floating.height}:a.reference,x=await(null==r.getOffsetParent?void 0:r.getOffsetParent(l.floating)),v=await(null==r.isElement?void 0:r.isElement(x))&amp;&amp;await(null==r.getScale?void 0:r.getScale(x))||{x:1,y:1},b=T(r.convertOffsetParentRelativeRectToViewportRelativeRect?await r.convertOffsetParentRelativeRectToViewportRelativeRect({elements:l,rect:w,offsetParent:x,strategy:s}):w);return{top:(y.top-b.top+p.top)/v.y,bottom:(b.bottom-y.bottom+p.bottom)/v.y,left:(y.left-b.left+p.left)/v.x,right:(b.right-y.right+p.right)/v.x}}function L(t,e){return{top:t.top-e.height,right:t.right-e.width,bottom:t.bottom-e.height,left:t.left-e.width}}function k(t){return e.some((e=&gt;t[e]&gt;=0))}function C(t){const e=o(...t.map((t=&gt;t.left))),n=o(...t.map((t=&gt;t.top)));return{x:e,y:n,width:r(...t.map((t=&gt;t.right)))-e,height:r(...t.map((t=&gt;t.bottom)))-n}}const S=new Set([&quot;left&quot;,&quot;top&quot;]);t.arrow=t=&gt;({name:&quot;arrow&quot;,options:t,async fn(e){const{x:n,y:i,placement:r,rects:a,platform:l,elements:c,middlewareData:u}=e,{element:g,padding:p=0}=f(t,e)||{};if(null==g)return{};const y=D(p),w={x:n,y:i},x=h(r),v=d(x),b=await l.getDimensions(g),A=&quot;y&quot;===x,R=A?&quot;top&quot;:&quot;left&quot;,P=A?&quot;bottom&quot;:&quot;right&quot;,T=A?&quot;clientHeight&quot;:&quot;clientWidth&quot;,O=a.reference[v]+a.reference[x]-w[x]-a.floating[v],E=w[x]-a.reference[x],L=await(null==l.getOffsetParent?void 0:l.getOffsetParent(g));let k=L?L[T]:0;k&amp;&amp;await(null==l.isElement?void 0:l.isElement(L))||(k=c.floating[T]||a.floating[v]);const C=O/2-E/2,S=k/2-b[v]/2-1,B=o(y[R],S),H=o(y[P],S),F=B,j=k-b[v]-H,z=k/2-b[v]/2+C,M=s(F,z,j),V=!u.arrow&amp;&amp;null!=m(r)&amp;&amp;z!==M&amp;&amp;a.reference[v]/2-(z&lt;F?B:H)-b[v]/2&lt;0,W=V?z&lt;F?z-F:z-j:0;return{[x]:w[x]+W,data:{[x]:M,centerOffset:z-M-W,...V&amp;&amp;{alignmentOffset:W}},reset:V}}}),t.autoPlacement=function(t){return void 0===t&amp;&amp;(t={}),{name:&quot;autoPlacement&quot;,options:t,async fn(e){var n,o,r;const{rects:a,middlewareData:l,placement:s,platform:u,elements:d}=e,{crossAxis:g=!1,alignment:p,allowedPlacements:h=i,autoAlignment:x=!0,...v}=f(t,e),b=void 0!==p||h===i?function(t,e,n){return(t?[...n.filter((e=&gt;m(e)===t)),...n.filter((e=&gt;m(e)!==t))]:n.filter((t=&gt;c(t)===t))).filter((n=&gt;!t||m(n)===t||!!e&amp;&amp;w(n)!==n))}(p||null,x,h):h,A=await E(e,v),R=(null==(n=l.autoPlacement)?void 0:n.index)||0,P=b[R];if(null==P)return{};const D=y(P,a,await(null==u.isRTL?void 0:u.isRTL(d.floating)));if(s!==P)return{reset:{placement:b[0]}};const T=[A[c(P)],A[D[0]],A[D[1]]],O=[...(null==(o=l.autoPlacement)?void 0:o.overflows)||[],{placement:P,overflows:T}],L=b[R+1];if(L)return{data:{index:R+1,overflows:O},reset:{placement:L}};const k=O.map((t=&gt;{const e=m(t.placement);return[t.placement,e&amp;&amp;g?t.overflows.slice(0,2).reduce(((t,e)=&gt;t+e),0):t.overflows[0],t.overflows]})).sort(((t,e)=&gt;t[1]-e[1])),C=(null==(r=k.filter((t=&gt;t[2].slice(0,m(t[0])?2:3).every((t=&gt;t&lt;=0))))[0])?void 0:r[0])||k[0][0];return C!==s?{data:{index:R+1,overflows:O},reset:{placement:C}}:{}}}},t.computePosition=async(t,e,n)=&gt;{const{placement:i=&quot;bottom&quot;,strategy:o=&quot;absolute&quot;,middleware:r=[],platform:a}=n,l=r.filter(Boolean),s=await(null==a.isRTL?void 0:a.isRTL(e));let f=await a.getElementRects({reference:t,floating:e,strategy:o}),{x:c,y:m}=O(f,i,s),u=i,d={},g=0;for(let n=0;n&lt;l.length;n++){const{name:r,fn:p}=l[n],{x:h,y:y,data:w,reset:x}=await p({x:c,y:m,initialPlacement:i,placement:u,strategy:o,middlewareData:d,rects:f,platform:a,elements:{reference:t,floating:e}});c=null!=h?h:c,m=null!=y?y:m,d={...d,[r]:{...d[r],...w}},x&amp;&amp;g&lt;=50&amp;&amp;(g++,&quot;object&quot;==typeof x&amp;&amp;(x.placement&amp;&amp;(u=x.placement),x.rects&amp;&amp;(f=!0===x.rects?await a.getElementRects({reference:t,floating:e,strategy:o}):x.rects),({x:c,y:m}=O(f,u,s))),n=-1)}return{x:c,y:m,placement:u,strategy:o,middlewareData:d}},t.detectOverflow=E,t.flip=function(t){return void 0===t&amp;&amp;(t={}),{name:&quot;flip&quot;,options:t,async fn(e){var n,i;const{placement:o,middlewareData:r,rects:a,initialPlacement:l,platform:s,elements:m}=e,{mainAxis:u=!0,crossAxis:d=!0,fallbackPlacements:g,fallbackStrategy:h=&quot;bestFit&quot;,fallbackAxisSideDirection:x=&quot;none&quot;,flipAlignment:v=!0,...b}=f(t,e);if(null!=(n=r.arrow)&amp;&amp;n.alignmentOffset)return{};const A=c(o),D=p(l),T=c(l)===l,O=await(null==s.isRTL?void 0:s.isRTL(m.floating)),L=g||(T||!v?[P(l)]:function(t){const e=P(t);return[w(t),e,w(e)]}(l)),k=&quot;none&quot;!==x;!g&amp;&amp;k&amp;&amp;L.push(...R(l,v,x,O));const C=[l,...L],S=await E(e,b),B=[];let H=(null==(i=r.flip)?void 0:i.overflows)||[];if(u&amp;&amp;B.push(S[A]),d){const t=y(o,a,O);B.push(S[t[0]],S[t[1]])}if(H=[...H,{placement:o,overflows:B}],!B.every((t=&gt;t&lt;=0))){var F,j;const t=((null==(F=r.flip)?void 0:F.index)||0)+1,e=C[t];if(e){if(!(&quot;alignment&quot;===d&amp;&amp;D!==p(e))||H.every((t=&gt;p(t.placement)!==D||t.overflows[0]&gt;0)))return{data:{index:t,overflows:H},reset:{placement:e}}}let n=null==(j=H.filter((t=&gt;t.overflows[0]&lt;=0)).sort(((t,e)=&gt;t.overflows[1]-e.overflows[1]))[0])?void 0:j.placement;if(!n)switch(h){case&quot;bestFit&quot;:{var z;const t=null==(z=H.filter((t=&gt;{if(k){const e=p(t.placement);return e===D||&quot;y&quot;===e}return!0})).map((t=&gt;[t.placement,t.overflows.filter((t=&gt;t&gt;0)).reduce(((t,e)=&gt;t+e),0)])).sort(((t,e)=&gt;t[1]-e[1]))[0])?void 0:z[0];t&amp;&amp;(n=t);break}case&quot;initialPlacement&quot;:n=l}if(o!==n)return{reset:{placement:n}}}return{}}}},t.hide=function(t){return void 0===t&amp;&amp;(t={}),{name:&quot;hide&quot;,options:t,async fn(e){const{rects:n}=e,{strategy:i=&quot;referenceHidden&quot;,...o}=f(t,e);switch(i){case&quot;referenceHidden&quot;:{const t=L(await E(e,{...o,elementContext:&quot;reference&quot;}),n.reference);return{data:{referenceHiddenOffsets:t,referenceHidden:k(t)}}}case&quot;escaped&quot;:{const t=L(await E(e,{...o,altBoundary:!0}),n.floating);return{data:{escapedOffsets:t,escaped:k(t)}}}default:return{}}}}},t.inline=function(t){return void 0===t&amp;&amp;(t={}),{name:&quot;inline&quot;,options:t,async fn(e){const{placement:n,elements:i,rects:a,platform:l,strategy:s}=e,{padding:m=2,x:u,y:d}=f(t,e),g=Array.from(await(null==l.getClientRects?void 0:l.getClientRects(i.reference))||[]),h=function(t){const e=t.slice().sort(((t,e)=&gt;t.y-e.y)),n=[];let i=null;for(let t=0;t&lt;e.length;t++){const o=e[t];!i||o.y-i.y&gt;i.height/2?n.push([o]):n[n.length-1].push(o),i=o}return n.map((t=&gt;T(C(t))))}(g),y=T(C(g)),w=D(m);const x=await l.getElementRects({reference:{getBoundingClientRect:function(){if(2===h.length&amp;&amp;h[0].left&gt;h[1].right&amp;&amp;null!=u&amp;&amp;null!=d)return h.find((t=&gt;u&gt;t.left-w.left&amp;&amp;u&lt;t.right+w.right&amp;&amp;d&gt;t.top-w.top&amp;&amp;d&lt;t.bottom+w.bottom))||y;if(h.length&gt;=2){if(&quot;y&quot;===p(n)){const t=h[0],e=h[h.length-1],i=&quot;top&quot;===c(n),o=t.top,r=e.bottom,a=i?t.left:e.left,l=i?t.right:e.right;return{top:o,bottom:r,left:a,right:l,width:l-a,height:r-o,x:a,y:o}}const t=&quot;left&quot;===c(n),e=r(...h.map((t=&gt;t.right))),i=o(...h.map((t=&gt;t.left))),a=h.filter((n=&gt;t?n.left===i:n.right===e)),l=a[0].top,s=a[a.length-1].bottom;return{top:l,bottom:s,left:i,right:e,width:e-i,height:s-l,x:i,y:l}}return y}},floating:i.floating,strategy:s});return a.reference.x!==x.reference.x||a.reference.y!==x.reference.y||a.reference.width!==x.reference.width||a.reference.height!==x.reference.height?{reset:{rects:x}}:{}}}},t.limitShift=function(t){return void 0===t&amp;&amp;(t={}),{options:t,fn(e){const{x:n,y:i,placement:o,rects:r,middlewareData:a}=e,{offset:l=0,mainAxis:s=!0,crossAxis:m=!0}=f(t,e),d={x:n,y:i},g=p(o),h=u(g);let y=d[h],w=d[g];const x=f(l,e),v=&quot;number&quot;==typeof x?{mainAxis:x,crossAxis:0}:{mainAxis:0,crossAxis:0,...x};if(s){const t=&quot;y&quot;===h?&quot;height&quot;:&quot;width&quot;,e=r.reference[h]-r.floating[t]+v.mainAxis,n=r.reference[h]+r.reference[t]-v.mainAxis;y&lt;e?y=e:y&gt;n&amp;&amp;(y=n)}if(m){var b,A;const t=&quot;y&quot;===h?&quot;width&quot;:&quot;height&quot;,e=S.has(c(o)),n=r.reference[g]-r.floating[t]+(e&amp;&amp;(null==(b=a.offset)?void 0:b[g])||0)+(e?0:v.crossAxis),i=r.reference[g]+r.reference[t]+(e?0:(null==(A=a.offset)?void 0:A[g])||0)-(e?v.crossAxis:0);w&lt;n?w=n:w&gt;i&amp;&amp;(w=i)}return{[h]:y,[g]:w}}}},t.offset=function(t){return void 0===t&amp;&amp;(t=0),{name:&quot;offset&quot;,options:t,async fn(e){var n,i;const{x:o,y:r,placement:a,middlewareData:l}=e,s=await async function(t,e){const{placement:n,platform:i,elements:o}=t,r=await(null==i.isRTL?void 0:i.isRTL(o.floating)),a=c(n),l=m(n),s=&quot;y&quot;===p(n),u=S.has(a)?-1:1,d=r&amp;&amp;s?-1:1,g=f(e,t);let{mainAxis:h,crossAxis:y,alignmentAxis:w}=&quot;number&quot;==typeof g?{mainAxis:g,crossAxis:0,alignmentAxis:null}:{mainAxis:g.mainAxis||0,crossAxis:g.crossAxis||0,alignmentAxis:g.alignmentAxis};return l&amp;&amp;&quot;number&quot;==typeof w&amp;&amp;(y=&quot;end&quot;===l?-1*w:w),s?{x:y*d,y:h*u}:{x:h*u,y:y*d}}(e,t);return a===(null==(n=l.offset)?void 0:n.placement)&amp;&amp;null!=(i=l.arrow)&amp;&amp;i.alignmentOffset?{}:{x:o+s.x,y:r+s.y,data:{...s,placement:a}}}}},t.rectToClientRect=T,t.shift=function(t){return void 0===t&amp;&amp;(t={}),{name:&quot;shift&quot;,options:t,async fn(e){const{x:n,y:i,placement:o}=e,{mainAxis:r=!0,crossAxis:a=!1,limiter:l={fn:t=&gt;{let{x:e,y:n}=t;return{x:e,y:n}}},...m}=f(t,e),d={x:n,y:i},g=await E(e,m),h=p(c(o)),y=u(h);let w=d[y],x=d[h];if(r){const t=&quot;y&quot;===y?&quot;bottom&quot;:&quot;right&quot;;w=s(w+g[&quot;y&quot;===y?&quot;top&quot;:&quot;left&quot;],w,w-g[t])}if(a){const t=&quot;y&quot;===h?&quot;bottom&quot;:&quot;right&quot;;x=s(x+g[&quot;y&quot;===h?&quot;top&quot;:&quot;left&quot;],x,x-g[t])}const v=l.fn({...e,[y]:w,[h]:x});return{...v,data:{x:v.x-n,y:v.y-i,enabled:{[y]:r,[h]:a}}}}}},t.size=function(t){return void 0===t&amp;&amp;(t={}),{name:&quot;size&quot;,options:t,async fn(e){var n,i;const{placement:a,rects:l,platform:s,elements:u}=e,{apply:d=()=&gt;{},...g}=f(t,e),h=await E(e,g),y=c(a),w=m(a),x=&quot;y&quot;===p(a),{width:v,height:b}=l.floating;let A,R;&quot;top&quot;===y||&quot;bottom&quot;===y?(A=y,R=w===(await(null==s.isRTL?void 0:s.isRTL(u.floating))?&quot;start&quot;:&quot;end&quot;)?&quot;left&quot;:&quot;right&quot;):(R=y,A=&quot;end&quot;===w?&quot;top&quot;:&quot;bottom&quot;);const P=b-h.top-h.bottom,D=v-h.left-h.right,T=o(b-h[A],P),O=o(v-h[R],D),L=!e.middlewareData.shift;let k=T,C=O;if(null!=(n=e.middlewareData.shift)&amp;&amp;n.enabled.x&amp;&amp;(C=D),null!=(i=e.middlewareData.shift)&amp;&amp;i.enabled.y&amp;&amp;(k=P),L&amp;&amp;!w){const t=r(h.left,0),e=r(h.right,0),n=r(h.top,0),i=r(h.bottom,0);x?C=v-2*(0!==t||0!==e?t+e:r(h.left,h.right)):k=b-2*(0!==n||0!==i?n+i:r(h.top,h.bottom))}await d({...e,availableWidth:C,availableHeight:k});const S=await s.getDimensions(u.floating);return v!==S.width||b!==S.height?{reset:{rects:!0}}:{}}}}}));
+&lt;/script&gt;
+&lt;script&gt;!function(t,e){&quot;object&quot;==typeof exports&amp;&amp;&quot;undefined&quot;!=typeof module?e(exports,require(&quot;@floating-ui/core&quot;)):&quot;function&quot;==typeof define&amp;&amp;define.amd?define([&quot;exports&quot;,&quot;@floating-ui/core&quot;],e):e((t=&quot;undefined&quot;!=typeof globalThis?globalThis:t||self).FloatingUIDOM={},t.FloatingUICore)}(this,(function(t,e){&quot;use strict&quot;;const n=Math.min,o=Math.max,i=Math.round,r=Math.floor,c=t=&gt;({x:t,y:t});function l(){return&quot;undefined&quot;!=typeof window}function s(t){return a(t)?(t.nodeName||&quot;&quot;).toLowerCase():&quot;#document&quot;}function f(t){var e;return(null==t||null==(e=t.ownerDocument)?void 0:e.defaultView)||window}function u(t){var e;return null==(e=(a(t)?t.ownerDocument:t.document)||window.document)?void 0:e.documentElement}function a(t){return!!l()&amp;&amp;(t instanceof Node||t instanceof f(t).Node)}function d(t){return!!l()&amp;&amp;(t instanceof Element||t instanceof f(t).Element)}function h(t){return!!l()&amp;&amp;(t instanceof HTMLElement||t instanceof f(t).HTMLElement)}function p(t){return!(!l()||&quot;undefined&quot;==typeof ShadowRoot)&amp;&amp;(t instanceof ShadowRoot||t instanceof f(t).ShadowRoot)}const g=new Set([&quot;inline&quot;,&quot;contents&quot;]);function m(t){const{overflow:e,overflowX:n,overflowY:o,display:i}=E(t);return/auto|scroll|overlay|hidden|clip/.test(e+o+n)&amp;&amp;!g.has(i)}const y=new Set([&quot;table&quot;,&quot;td&quot;,&quot;th&quot;]);function w(t){return y.has(s(t))}const x=[&quot;:popover-open&quot;,&quot;:modal&quot;];function v(t){return x.some((e=&gt;{try{return t.matches(e)}catch(t){return!1}}))}const b=[&quot;transform&quot;,&quot;translate&quot;,&quot;scale&quot;,&quot;rotate&quot;,&quot;perspective&quot;],T=[&quot;transform&quot;,&quot;translate&quot;,&quot;scale&quot;,&quot;rotate&quot;,&quot;perspective&quot;,&quot;filter&quot;],L=[&quot;paint&quot;,&quot;layout&quot;,&quot;strict&quot;,&quot;content&quot;];function R(t){const e=S(),n=d(t)?E(t):t;return b.some((t=&gt;!!n[t]&amp;&amp;&quot;none&quot;!==n[t]))||!!n.containerType&amp;&amp;&quot;normal&quot;!==n.containerType||!e&amp;&amp;!!n.backdropFilter&amp;&amp;&quot;none&quot;!==n.backdropFilter||!e&amp;&amp;!!n.filter&amp;&amp;&quot;none&quot;!==n.filter||T.some((t=&gt;(n.willChange||&quot;&quot;).includes(t)))||L.some((t=&gt;(n.contain||&quot;&quot;).includes(t)))}function S(){return!(&quot;undefined&quot;==typeof CSS||!CSS.supports)&amp;&amp;CSS.supports(&quot;-webkit-backdrop-filter&quot;,&quot;none&quot;)}const C=new Set([&quot;html&quot;,&quot;body&quot;,&quot;#document&quot;]);function F(t){return C.has(s(t))}function E(t){return f(t).getComputedStyle(t)}function O(t){return d(t)?{scrollLeft:t.scrollLeft,scrollTop:t.scrollTop}:{scrollLeft:t.scrollX,scrollTop:t.scrollY}}function D(t){if(&quot;html&quot;===s(t))return t;const e=t.assignedSlot||t.parentNode||p(t)&amp;&amp;t.host||u(t);return p(e)?e.host:e}function W(t){const e=D(t);return F(e)?t.ownerDocument?t.ownerDocument.body:t.body:h(e)&amp;&amp;m(e)?e:W(e)}function M(t,e,n){var o;void 0===e&amp;&amp;(e=[]),void 0===n&amp;&amp;(n=!0);const i=W(t),r=i===(null==(o=t.ownerDocument)?void 0:o.body),c=f(i);if(r){const t=H(c);return e.concat(c,c.visualViewport||[],m(i)?i:[],t&amp;&amp;n?M(t):[])}return e.concat(i,M(i,[],n))}function H(t){return t.parent&amp;&amp;Object.getPrototypeOf(t.parent)?t.frameElement:null}function P(t){const e=E(t);let n=parseFloat(e.width)||0,o=parseFloat(e.height)||0;const r=h(t),c=r?t.offsetWidth:n,l=r?t.offsetHeight:o,s=i(n)!==c||i(o)!==l;return s&amp;&amp;(n=c,o=l),{width:n,height:o,$:s}}function z(t){return d(t)?t:t.contextElement}function A(t){const e=z(t);if(!h(e))return c(1);const n=e.getBoundingClientRect(),{width:o,height:r,$:l}=P(e);let s=(l?i(n.width):n.width)/o,f=(l?i(n.height):n.height)/r;return s&amp;&amp;Number.isFinite(s)||(s=1),f&amp;&amp;Number.isFinite(f)||(f=1),{x:s,y:f}}const B=c(0);function V(t){const e=f(t);return S()&amp;&amp;e.visualViewport?{x:e.visualViewport.offsetLeft,y:e.visualViewport.offsetTop}:B}function N(t,n,o,i){void 0===n&amp;&amp;(n=!1),void 0===o&amp;&amp;(o=!1);const r=t.getBoundingClientRect(),l=z(t);let s=c(1);n&amp;&amp;(i?d(i)&amp;&amp;(s=A(i)):s=A(t));const u=function(t,e,n){return void 0===e&amp;&amp;(e=!1),!(!n||e&amp;&amp;n!==f(t))&amp;&amp;e}(l,o,i)?V(l):c(0);let a=(r.left+u.x)/s.x,h=(r.top+u.y)/s.y,p=r.width/s.x,g=r.height/s.y;if(l){const t=f(l),e=i&amp;&amp;d(i)?f(i):i;let n=t,o=H(n);for(;o&amp;&amp;i&amp;&amp;e!==n;){const t=A(o),e=o.getBoundingClientRect(),i=E(o),r=e.left+(o.clientLeft+parseFloat(i.paddingLeft))*t.x,c=e.top+(o.clientTop+parseFloat(i.paddingTop))*t.y;a*=t.x,h*=t.y,p*=t.x,g*=t.y,a+=r,h+=c,n=f(o),o=H(n)}}return e.rectToClientRect({width:p,height:g,x:a,y:h})}function I(t,e){const n=O(t).scrollLeft;return e?e.left+n:N(u(t)).left+n}function k(t,e){const n=t.getBoundingClientRect();return{x:n.left+e.scrollLeft-I(t,n),y:n.top+e.scrollTop}}const q=new Set([&quot;absolute&quot;,&quot;fixed&quot;]);function U(t,n,i){let r;if(&quot;viewport&quot;===n)r=function(t,e){const n=f(t),o=u(t),i=n.visualViewport;let r=o.clientWidth,c=o.clientHeight,l=0,s=0;if(i){r=i.width,c=i.height;const t=S();(!t||t&amp;&amp;&quot;fixed&quot;===e)&amp;&amp;(l=i.offsetLeft,s=i.offsetTop)}const a=I(o);if(a&lt;=0){const t=o.ownerDocument,e=t.body,n=getComputedStyle(e),i=&quot;CSS1Compat&quot;===t.compatMode&amp;&amp;parseFloat(n.marginLeft)+parseFloat(n.marginRight)||0,c=Math.abs(o.clientWidth-e.clientWidth-i);c&lt;=25&amp;&amp;(r-=c)}else a&lt;=25&amp;&amp;(r+=a);return{width:r,height:c,x:l,y:s}}(t,i);else if(&quot;document&quot;===n)r=function(t){const e=u(t),n=O(t),i=t.ownerDocument.body,r=o(e.scrollWidth,e.clientWidth,i.scrollWidth,i.clientWidth),c=o(e.scrollHeight,e.clientHeight,i.scrollHeight,i.clientHeight);let l=-n.scrollLeft+I(t);const s=-n.scrollTop;return&quot;rtl&quot;===E(i).direction&amp;&amp;(l+=o(e.clientWidth,i.clientWidth)-r),{width:r,height:c,x:l,y:s}}(u(t));else if(d(n))r=function(t,e){const n=N(t,!0,&quot;fixed&quot;===e),o=n.top+t.clientTop,i=n.left+t.clientLeft,r=h(t)?A(t):c(1);return{width:t.clientWidth*r.x,height:t.clientHeight*r.y,x:i*r.x,y:o*r.y}}(n,i);else{const e=V(t);r={x:n.x-e.x,y:n.y-e.y,width:n.width,height:n.height}}return e.rectToClientRect(r)}function j(t,e){const n=D(t);return!(n===e||!d(n)||F(n))&amp;&amp;(&quot;fixed&quot;===E(n).position||j(n,e))}function X(t,e,n){const o=h(e),i=u(e),r=&quot;fixed&quot;===n,l=N(t,!0,r,e);let f={scrollLeft:0,scrollTop:0};const a=c(0);function d(){a.x=I(i)}if(o||!o&amp;&amp;!r)if((&quot;body&quot;!==s(e)||m(i))&amp;&amp;(f=O(e)),o){const t=N(e,!0,r,e);a.x=t.x+e.clientLeft,a.y=t.y+e.clientTop}else i&amp;&amp;d();r&amp;&amp;!o&amp;&amp;i&amp;&amp;d();const p=!i||o||r?c(0):k(i,f);return{x:l.left+f.scrollLeft-a.x-p.x,y:l.top+f.scrollTop-a.y-p.y,width:l.width,height:l.height}}function Y(t){return&quot;static&quot;===E(t).position}function $(t,e){if(!h(t)||&quot;fixed&quot;===E(t).position)return null;if(e)return e(t);let n=t.offsetParent;return u(t)===n&amp;&amp;(n=n.ownerDocument.body),n}function _(t,e){const n=f(t);if(v(t))return n;if(!h(t)){let e=D(t);for(;e&amp;&amp;!F(e);){if(d(e)&amp;&amp;!Y(e))return e;e=D(e)}return n}let o=$(t,e);for(;o&amp;&amp;w(o)&amp;&amp;Y(o);)o=$(o,e);return o&amp;&amp;F(o)&amp;&amp;Y(o)&amp;&amp;!R(o)?n:o||function(t){let e=D(t);for(;h(e)&amp;&amp;!F(e);){if(R(e))return e;if(v(e))return null;e=D(e)}return null}(t)||n}const G={convertOffsetParentRelativeRectToViewportRelativeRect:function(t){let{elements:e,rect:n,offsetParent:o,strategy:i}=t;const r=&quot;fixed&quot;===i,l=u(o),f=!!e&amp;&amp;v(e.floating);if(o===l||f&amp;&amp;r)return n;let a={scrollLeft:0,scrollTop:0},d=c(1);const p=c(0),g=h(o);if((g||!g&amp;&amp;!r)&amp;&amp;((&quot;body&quot;!==s(o)||m(l))&amp;&amp;(a=O(o)),h(o))){const t=N(o);d=A(o),p.x=t.x+o.clientLeft,p.y=t.y+o.clientTop}const y=!l||g||r?c(0):k(l,a);return{width:n.width*d.x,height:n.height*d.y,x:n.x*d.x-a.scrollLeft*d.x+p.x+y.x,y:n.y*d.y-a.scrollTop*d.y+p.y+y.y}},getDocumentElement:u,getClippingRect:function(t){let{element:e,boundary:i,rootBoundary:r,strategy:c}=t;const l=[...&quot;clippingAncestors&quot;===i?v(e)?[]:function(t,e){const n=e.get(t);if(n)return n;let o=M(t,[],!1).filter((t=&gt;d(t)&amp;&amp;&quot;body&quot;!==s(t))),i=null;const r=&quot;fixed&quot;===E(t).position;let c=r?D(t):t;for(;d(c)&amp;&amp;!F(c);){const e=E(c),n=R(c);n||&quot;fixed&quot;!==e.position||(i=null),(r?!n&amp;&amp;!i:!n&amp;&amp;&quot;static&quot;===e.position&amp;&amp;i&amp;&amp;q.has(i.position)||m(c)&amp;&amp;!n&amp;&amp;j(t,c))?o=o.filter((t=&gt;t!==c)):i=e,c=D(c)}return e.set(t,o),o}(e,this._c):[].concat(i),r],f=l[0],u=l.reduce(((t,i)=&gt;{const r=U(e,i,c);return t.top=o(r.top,t.top),t.right=n(r.right,t.right),t.bottom=n(r.bottom,t.bottom),t.left=o(r.left,t.left),t}),U(e,f,c));return{width:u.right-u.left,height:u.bottom-u.top,x:u.left,y:u.top}},getOffsetParent:_,getElementRects:async function(t){const e=this.getOffsetParent||_,n=this.getDimensions,o=await n(t.floating);return{reference:X(t.reference,await e(t.floating),t.strategy),floating:{x:0,y:0,width:o.width,height:o.height}}},getClientRects:function(t){return Array.from(t.getClientRects())},getDimensions:function(t){const{width:e,height:n}=P(t);return{width:e,height:n}},getScale:A,isElement:d,isRTL:function(t){return&quot;rtl&quot;===E(t).direction}};function J(t,e){return t.x===e.x&amp;&amp;t.y===e.y&amp;&amp;t.width===e.width&amp;&amp;t.height===e.height}const K=e.detectOverflow,Q=e.offset,Z=e.autoPlacement,tt=e.shift,et=e.flip,nt=e.size,ot=e.hide,it=e.arrow,rt=e.inline,ct=e.limitShift;t.arrow=it,t.autoPlacement=Z,t.autoUpdate=function(t,e,i,c){void 0===c&amp;&amp;(c={});const{ancestorScroll:l=!0,ancestorResize:s=!0,elementResize:f=&quot;function&quot;==typeof ResizeObserver,layoutShift:a=&quot;function&quot;==typeof IntersectionObserver,animationFrame:d=!1}=c,h=z(t),p=l||s?[...h?M(h):[],...M(e)]:[];p.forEach((t=&gt;{l&amp;&amp;t.addEventListener(&quot;scroll&quot;,i,{passive:!0}),s&amp;&amp;t.addEventListener(&quot;resize&quot;,i)}));const g=h&amp;&amp;a?function(t,e){let i,c=null;const l=u(t);function s(){var t;clearTimeout(i),null==(t=c)||t.disconnect(),c=null}return function f(u,a){void 0===u&amp;&amp;(u=!1),void 0===a&amp;&amp;(a=1),s();const d=t.getBoundingClientRect(),{left:h,top:p,width:g,height:m}=d;if(u||e(),!g||!m)return;const y={rootMargin:-r(p)+&quot;px &quot;+-r(l.clientWidth-(h+g))+&quot;px &quot;+-r(l.clientHeight-(p+m))+&quot;px &quot;+-r(h)+&quot;px&quot;,threshold:o(0,n(1,a))||1};let w=!0;function x(e){const n=e[0].intersectionRatio;if(n!==a){if(!w)return f();n?f(!1,n):i=setTimeout((()=&gt;{f(!1,1e-7)}),1e3)}1!==n||J(d,t.getBoundingClientRect())||f(),w=!1}try{c=new IntersectionObserver(x,{...y,root:l.ownerDocument})}catch(t){c=new IntersectionObserver(x,y)}c.observe(t)}(!0),s}(h,i):null;let m,y=-1,w=null;f&amp;&amp;(w=new ResizeObserver((t=&gt;{let[n]=t;n&amp;&amp;n.target===h&amp;&amp;w&amp;&amp;(w.unobserve(e),cancelAnimationFrame(y),y=requestAnimationFrame((()=&gt;{var t;null==(t=w)||t.observe(e)}))),i()})),h&amp;&amp;!d&amp;&amp;w.observe(h),w.observe(e));let x=d?N(t):null;return d&amp;&amp;function e(){const n=N(t);x&amp;&amp;!J(x,n)&amp;&amp;i();x=n,m=requestAnimationFrame(e)}(),i(),()=&gt;{var t;p.forEach((t=&gt;{l&amp;&amp;t.removeEventListener(&quot;scroll&quot;,i),s&amp;&amp;t.removeEventListener(&quot;resize&quot;,i)})),null==g||g(),null==(t=w)||t.disconnect(),w=null,d&amp;&amp;cancelAnimationFrame(m)}},t.computePosition=(t,n,o)=&gt;{const i=new Map,r={platform:G,...o},c={...r.platform,_c:i};return e.computePosition(t,n,{...r,platform:c})},t.detectOverflow=K,t.flip=et,t.getOverflowAncestors=M,t.hide=ot,t.inline=rt,t.limitShift=ct,t.offset=Q,t.platform=G,t.shift=tt,t.size=nt}));
+&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+  let lastPointerWasTouch = false;
+  let pinnedByTouch = false;
+
+  const getTrigger = (event) =&gt; {
+    for (const target of event.composedPath()) {
+      if (target?.nodeType === Node.ELEMENT_NODE) {
+        const trigger = target.closest(&quot;[data-tooltip]&quot;);
+        if (trigger) return trigger;
+      }
+    }
+    return null;
+  };
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    pinnedByTouch = false;
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handlePointer = (event) =&gt; {
+    lastPointerWasTouch =
+      event.type === &quot;pointerdown&quot; &amp;&amp; event.pointerType === &quot;touch&quot;;
+  };
+  const handleTouchClick = (event) =&gt; {
+    const isTouch = event.pointerType === &quot;touch&quot; || lastPointerWasTouch;
+    lastPointerWasTouch = false;
+    if (!isTouch || event.detail === 0) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (
+      trigger == null ||
+      !trigger.isConnected ||
+      getContent(trigger).length === 0 ||
+      (pinnedByTouch &amp;&amp; activeTrigger === trigger)
+    ) {
+      if (pinnedByTouch) {
+        closeTooltip();
+      }
+      return;
+    }
+    openTooltip(trigger);
+    pinnedByTouch = activeTrigger === trigger;
+    window.setTimeout(() =&gt; {
+      if (activeTrigger === trigger &amp;&amp; !trigger.isConnected) {
+        closeTooltip(false);
+      }
+    }, 0);
+  };
+  const handleLeave = (event) =&gt; {
+    if (pinnedByTouch) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    lastPointerWasTouch = false;
+    const trigger = getTrigger(event);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handlers = {
+    pointerover: handlePointerOpen,
+    pointerdown: handlePointer,
+    pointercancel: handlePointer,
+    click: handleTouchClick,
+    pointerout: handleLeave,
+    focusin: handleFocusIn,
+    focusout: handleLeave,
+    keydown: handleKeyDown,
+    contextmenu: handleContextMenu,
+  };
+  const roots = new Map();
+  const handledEvents = new WeakSet();
+  const handleEvent = (event) =&gt; {
+    if (handledEvents.has(event)) return;
+    handledEvents.add(event);
+    handlers[event.type](event);
+  };
+  const discoverRoots = (node) =&gt; {
+    if (node.shadowRoot) listen(node.shadowRoot);
+    for (const element of node.querySelectorAll(&quot;*&quot;)) {
+      if (element.shadowRoot) listen(element.shadowRoot);
+    }
+  };
+  const listen = (root) =&gt; {
+    if (roots.has(root)) return;
+    for (const type of Object.keys(handlers)) root.addEventListener(type, handleEvent);
+    const observer = new window.MutationObserver((records) =&gt; {
+      for (const { addedNodes } of records) {
+        for (const node of addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) discoverRoots(node);
+        }
+      }
+      for (const [root, cleanup] of roots) {
+        if (root.host &amp;&amp; !root.host.isConnected) {
+          cleanup();
+          roots.delete(root);
+        }
+      }
+      if (activeTrigger &amp;&amp; !activeTrigger.isConnected) closeTooltip(false);
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    roots.set(root, () =&gt; {
+      observer.disconnect();
+      for (const type of Object.keys(handlers)) root.removeEventListener(type, handleEvent);
+    });
+    discoverRoots(root);
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    lastPointerWasTouch = false;
+    for (const cleanup of roots.values()) cleanup();
+    roots.clear();
+    tooltip = null;
+  };
+
+  // Events between children of one shadow root never reach the document.
+  listen(document);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-tabs&quot;&gt;
+(() =&gt; {
+  const selector = &#x27;.nav[role=&quot;tablist&quot;] [role=&quot;tab&quot;]&#x27;;
+  const disabled = &#x27;:disabled,[aria-disabled=&quot;true&quot;]&#x27;;
+  const selectTab = (selected) =&gt; {
+    const panelId = selected.getAttribute(&quot;aria-controls&quot;);
+    for (const tab of selected.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;)) {
+      const active = tab === selected;
+      tab.classList.toggle(&quot;active&quot;, active);
+      tab.setAttribute(&quot;aria-selected&quot;, String(active));
+      const id = tab.getAttribute(&quot;aria-controls&quot;);
+      const panel = id &amp;&amp; document.getElementById(id);
+      if (panel != null) {
+        panel.hidden = id !== panelId;
+        if (!panel.hidden &amp;&amp; selected.id) {
+          panel.setAttribute(&quot;aria-labelledby&quot;, selected.id);
+        }
+      }
+    }
+  };
+  const interact = (event) =&gt; {
+    const tab = event.target?.closest?.(selector);
+    if (event.defaultPrevented || tab == null || tab.matches(disabled)) {
+      return;
+    }
+    if (event.type === &quot;click&quot;) {
+      selectTab(tab);
+      return;
+    }
+    const tabs = Array.from(
+      tab.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;),
+    ).filter((candidate) =&gt; !candidate.matches(disabled));
+    const current = tabs.indexOf(tab);
+    let next;
+    if (event.key === &quot;ArrowRight&quot; || event.key === &quot;ArrowDown&quot;) {
+      next = (current + 1) % tabs.length;
+    } else if (event.key === &quot;ArrowLeft&quot; || event.key === &quot;ArrowUp&quot;) {
+      next = (current + tabs.length - 1) % tabs.length;
+    } else if (event.key === &quot;Home&quot;) {
+      next = 0;
+    } else if (event.key === &quot;End&quot;) {
+      next = tabs.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    tabs[next].focus();
+    selectTab(tabs[next]);
+  };
+
+  for (const list of document.querySelectorAll(&#x27;.nav[role=&quot;tablist&quot;]&#x27;)) {
+    const selected =
+      list.querySelector(&#x27;[role=&quot;tab&quot;][aria-selected=&quot;true&quot;]&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;].active&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;]&#x27;);
+    if (selected != null) {
+      selectTab(selected);
+    }
+  }
+  document.addEventListener(&quot;click&quot;, interact);
+  document.addEventListener(&quot;keydown&quot;, interact);
+  window.addEventListener(&quot;pagehide&quot;, () =&gt; {
+    document.removeEventListener(&quot;click&quot;, interact);
+    document.removeEventListener(&quot;keydown&quot;, interact);
+  }, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-carousel&quot;&gt;
+  (() =&gt; {
+    for (const root of document.querySelectorAll(&quot;.viz-carousel&quot;)) {
+      const panels = Array.from(
+        root.querySelectorAll(&quot;:scope &gt; [data-variant]&quot;),
+      );
+      if (panels.length === 0) {
+        continue;
+      }
+      root.setAttribute(&quot;role&quot;, &quot;group&quot;);
+      panels.forEach((panel, index) =&gt; {
+        panel.hidden = index !== 0;
+        panel.setAttribute(&quot;role&quot;, &quot;group&quot;);
+        if (!panel.hasAttribute(&quot;aria-label&quot;)) {
+          panel.setAttribute(&quot;aria-label&quot;, panel.dataset.variant);
+        }
+      });
+      root.dataset.activeVariant = panels[0].dataset.variant;
+      if (panels.length === 1) {
+        continue;
+      }
+
+      const controls = document.createElement(&quot;div&quot;);
+      controls.className = &quot;viz-carousel-controls&quot;;
+      // Portable copy of the settings dropdown&#x27;s legacy glyph; no 14px icon-package preset matches it.
+      // https://github.com/openai/openai/blob/master/codex/codex-apps/webview/src/icons/chevron.svg
+      controls.innerHTML = `
+      &lt;button type=&quot;button&quot; class=&quot;viz-carousel-previous cursor-interaction&quot;&gt;&lt;i data-lucide=&quot;chevron-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+      &lt;details class=&quot;viz-carousel-picker&quot;&gt;
+        &lt;summary class=&quot;cursor-interaction&quot;&gt;
+          &lt;span class=&quot;viz-carousel-count tabular-nums&quot;&gt;&lt;/span&gt;
+          &lt;span class=&quot;viz-carousel-name&quot;&gt;&lt;/span&gt;
+          &lt;svg class=&quot;viz-carousel-caret&quot; width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 20 21&quot; fill=&quot;none&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;
+            &lt;path d=&quot;M15.2793 7.71101C15.539 7.45131 15.961 7.45131 16.2207 7.71101C16.4804 7.97071 16.4804 8.39272 16.2207 8.65242L10.4707 14.4024C10.211 14.6621 9.78902 14.6621 9.52932 14.4024L3.77932 8.65242L3.69436 8.54792C3.52385 8.28979 3.55205 7.93828 3.77932 7.71101C4.00659 7.48374 4.3581 7.45554 4.61623 7.62605L4.72073 7.71101L10 12.9903L15.2793 7.71101Z&quot; fill=&quot;currentColor&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;0.6&quot; /&gt;
+          &lt;/svg&gt;
+        &lt;/summary&gt;
+        &lt;div class=&quot;viz-carousel-options&quot;&gt;&lt;/div&gt;
+      &lt;/details&gt;
+      &lt;button type=&quot;button&quot; class=&quot;viz-carousel-next cursor-interaction&quot;&gt;&lt;i data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;`;
+      const previous = controls.querySelector(&quot;.viz-carousel-previous&quot;);
+      const next = controls.querySelector(&quot;.viz-carousel-next&quot;);
+      const picker = controls.querySelector(&quot;.viz-carousel-picker&quot;);
+      const summary = picker.querySelector(&quot;summary&quot;);
+      const count = controls.querySelector(&quot;.viz-carousel-count&quot;);
+      const name = controls.querySelector(&quot;.viz-carousel-name&quot;);
+      const options = controls.querySelector(&quot;.viz-carousel-options&quot;);
+      const status = document.createElement(&quot;span&quot;);
+      status.className = &quot;sr-only&quot;;
+      status.setAttribute(&quot;role&quot;, &quot;status&quot;);
+      status.setAttribute(&quot;aria-live&quot;, &quot;polite&quot;);
+      status.setAttribute(&quot;aria-atomic&quot;, &quot;true&quot;);
+      previous.setAttribute(
+        &quot;aria-label&quot;,
+        root.dataset.previousLabel ?? &quot;Previous variant&quot;,
+      );
+      next.setAttribute(&quot;aria-label&quot;, root.dataset.nextLabel ?? &quot;Next variant&quot;);
+
+      let active = 0;
+      let mousePointerId = null;
+      let summaryPointerHandled = false;
+      summary.addEventListener(&quot;pointerdown&quot;, (event) =&gt; {
+        summaryPointerHandled =
+          event.pointerType === &quot;mouse&quot; &amp;&amp; event.button === 0 &amp;&amp; !event.ctrlKey;
+        if (!summaryPointerHandled) {
+          return;
+        }
+        event.preventDefault();
+        summary.focus({ preventScroll: true });
+        picker.open = !picker.open;
+        mousePointerId = picker.open ? event.pointerId : null;
+      });
+      summary.addEventListener(&quot;click&quot;, (event) =&gt; {
+        if (summaryPointerHandled &amp;&amp; event.detail &gt; 0) {
+          event.preventDefault();
+        }
+      });
+      const choices = panels.map((panel, index) =&gt; {
+        const choice = document.createElement(&quot;button&quot;);
+        choice.type = &quot;button&quot;;
+        choice.className = &quot;cursor-interaction&quot;;
+        choice.textContent = panel.dataset.variant;
+        choice.addEventListener(&quot;click&quot;, () =&gt; {
+          select(index);
+          summary.focus();
+        });
+        choice.addEventListener(&quot;pointerup&quot;, (event) =&gt; {
+          if (
+            picker.open &amp;&amp;
+            event.pointerType === &quot;mouse&quot; &amp;&amp;
+            event.button === 0 &amp;&amp;
+            event.pointerId === mousePointerId
+          ) {
+            choice.click();
+          }
+        });
+        options.appendChild(choice);
+        return choice;
+      });
+      const select = (index) =&gt; {
+        const changed = active !== index;
+        active = index;
+        panels.forEach((panel, position) =&gt; {
+          panel.hidden = position !== active;
+          choices[position].setAttribute(
+            &quot;aria-current&quot;,
+            String(position === active),
+          );
+        });
+        root.dataset.activeVariant = panels[active].dataset.variant;
+        count.textContent = `${active + 1} / ${panels.length}`;
+        name.textContent = panels[active].dataset.variant;
+        picker.open = false;
+        mousePointerId = null;
+        if (changed) {
+          status.textContent = `${count.textContent}: ${name.textContent}`;
+        }
+      };
+      previous.addEventListener(&quot;click&quot;, () =&gt;
+        select((active + panels.length - 1) % panels.length),
+      );
+      next.addEventListener(&quot;click&quot;, () =&gt;
+        select((active + 1) % panels.length),
+      );
+      picker.addEventListener(&quot;keydown&quot;, (event) =&gt; {
+        if (event.key === &quot;Escape&quot; &amp;&amp; picker.open) {
+          event.preventDefault();
+          picker.open = false;
+          mousePointerId = null;
+          summary.focus();
+          return;
+        }
+        if (event.altKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+        const index = choices.indexOf(document.activeElement);
+        let nextIndex;
+        if (event.key === &quot;ArrowDown&quot;) {
+          nextIndex = index &lt; 0 ? active : (index + 1) % choices.length;
+        } else if (event.key === &quot;ArrowUp&quot;) {
+          nextIndex = index &lt; 0 ? active : (index + choices.length - 1) % choices.length;
+        } else if (picker.open &amp;&amp; event.key === &quot;Home&quot;) {
+          nextIndex = 0;
+        } else if (picker.open &amp;&amp; event.key === &quot;End&quot;) {
+          nextIndex = choices.length - 1;
+        } else {
+          return;
+        }
+        event.preventDefault();
+        picker.open = true;
+        choices[nextIndex].focus();
+      });
+      picker.addEventListener(&quot;focusout&quot;, (event) =&gt; {
+        if (!picker.contains(event.relatedTarget)) {
+          picker.open = false;
+          mousePointerId = null;
+        }
+      });
+      const dismiss = (event) =&gt; {
+        if (!summary.contains(event.target)) {
+          mousePointerId = null;
+        }
+        if (!picker.contains(event.target)) {
+          picker.open = false;
+        }
+      };
+      const endPointerSelection = () =&gt; {
+        mousePointerId = null;
+      };
+      const sizePicker = () =&gt; {
+        root.style.setProperty(
+          &quot;--viz-carousel-picker-height&quot;,
+          `${picker.open ? options.offsetHeight : 0}px`,
+        );
+      };
+      picker.addEventListener(&quot;toggle&quot;, sizePicker);
+      window.addEventListener(&quot;resize&quot;, sizePicker);
+      document.addEventListener(&quot;pointerdown&quot;, dismiss);
+      document.addEventListener(&quot;pointerup&quot;, endPointerSelection);
+      document.addEventListener(&quot;pointercancel&quot;, endPointerSelection);
+      window.addEventListener(&quot;blur&quot;, endPointerSelection);
+      window.addEventListener(
+        &quot;pagehide&quot;,
+        () =&gt; {
+          document.removeEventListener(&quot;pointerdown&quot;, dismiss);
+          document.removeEventListener(&quot;pointerup&quot;, endPointerSelection);
+          document.removeEventListener(&quot;pointercancel&quot;, endPointerSelection);
+          window.removeEventListener(&quot;blur&quot;, endPointerSelection);
+          window.removeEventListener(&quot;resize&quot;, sizePicker);
+        },
+        { once: true },
+      );
+      root.append(controls, status);
+      select(0);
+    }
+  })();
+&lt;/script&gt;
+
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+
+<script>(() => {
+  const frame = document.getElementById("codex-visualization");
+  if (!(frame instanceof HTMLIFrameElement)) {
+    return;
+  }
+  const isShare = document.documentElement.classList.contains(
+    "visualization-share-root",
+  );
+  let viewportHeight = globalThis.innerHeight;
+  let sizeFingerprint = null;
+  let sizeWriteTimeout;
+  let lastSize = null;
+  let pendingSize = null;
+  const storageKey = `codex:visualization-widget-state-v2:${JSON.stringify([
+    globalThis.location.pathname,
+    globalThis.location.search,
+  ])}`;
+  const sizeStorageKey = `${storageKey}:share-size-v1`;
+  const parseState = (serializedState) => {
+    if (
+      typeof serializedState !== "string" ||
+      new TextEncoder().encode(serializedState).length > 16 * 1024
+    ) {
+      throw new TypeError(
+        "Widget state must be a JSON object of at most 16 KiB",
+      );
+    }
+    /** @type {unknown} */
+    const state = JSON.parse(serializedState);
+    if (
+      state == null ||
+      typeof state !== "object" ||
+      Array.isArray(state) ||
+      ("imageIds" in state &&
+        (!Array.isArray(state.imageIds) || state.imageIds.length > 0))
+    ) {
+      throw new TypeError("Widget state must be a JSON object");
+    }
+    const storedState = { modelContent: null, privateContent: null, ...state };
+    const canonicalState = JSON.stringify(
+      storedState,
+      (_key, /** @type {unknown} */ value) => {
+        if (typeof value === "number" && !Number.isFinite(value)) {
+          throw new TypeError("Widget state must contain finite numbers");
+        }
+        return value;
+      },
+    );
+    if (new TextEncoder().encode(canonicalState).length > 16 * 1024) {
+      throw new TypeError(
+        "Widget state must be a JSON object of at most 16 KiB",
+      );
+    }
+    return storedState;
+  };
+  let storage = null;
+  let state = null;
+  try {
+    const localStorage = globalThis.localStorage;
+    const probeKey = `${storageKey}:probe`;
+    localStorage.setItem(probeKey, "1");
+    localStorage.removeItem(probeKey);
+    storage = localStorage;
+    const savedState = storage.getItem(storageKey);
+    if (savedState != null) {
+      try {
+        state = parseState(savedState);
+      } catch {
+        // Invalid saved state does not disable future writes.
+      }
+    }
+  } catch {
+    storage = null;
+  }
+  const persistSize = () => {
+    globalThis.clearTimeout(sizeWriteTimeout);
+    if (pendingSize == null) {
+      return;
+    }
+    try {
+      storage?.setItem(sizeStorageKey, pendingSize);
+    } catch {
+      // A denied or full cache must not affect the visualization.
+    }
+    pendingSize = null;
+  };
+  if (isShare) {
+    globalThis.addEventListener("pagehide", persistSize);
+  }
+  const initialGlobals = {
+    widgetState: state,
+    statePersistence: storage == null ? "none" : "local",
+  };
+
+  const channel = new MessageChannel();
+  channel.port1.addEventListener("message", (event) => {
+    const data = event.data;
+    if (typeof data !== "object" || data == null) {
+      return;
+    }
+    if (data.type === "widget-state-write") {
+      if (!Number.isSafeInteger(data.id) || data.id <= 0) {
+        return;
+      }
+      let ok = false;
+      try {
+        if (storage != null) {
+          const state = parseState(data.state);
+          storage.setItem(storageKey, JSON.stringify(state));
+          ok = true;
+        }
+      } catch {
+        // Storage denial, quota limits, and invalid state return a failed receipt.
+      }
+      channel.port1.postMessage({
+        type: "widget-state-result",
+        id: data.id,
+        ok,
+      });
+      return;
+    }
+    if (data.type === "height") {
+      const height = data.height;
+      if (
+        typeof height !== "number" ||
+        !Number.isFinite(height) ||
+        height < 0
+      ) {
+        return;
+      }
+      if (height <= 10_000) {
+        const width = isShare && storage != null ? frame.clientWidth : null;
+        frame.style.height = Math.ceil(height) + "px";
+        if (isShare && storage != null) {
+          const size = JSON.stringify({
+            fingerprint: sizeFingerprint,
+            width,
+            viewportHeight: globalThis.innerHeight,
+            dark: globalThis.matchMedia("(prefers-color-scheme: dark)").matches,
+            scale: globalThis.devicePixelRatio,
+            height: Math.ceil(height),
+          });
+          if (size !== lastSize) {
+            lastSize = size;
+            pendingSize = size;
+            globalThis.clearTimeout(sizeWriteTimeout);
+            sizeWriteTimeout = globalThis.setTimeout(persistSize, 100);
+          }
+        }
+      }
+      if (isShare) {
+        // Keep unusually tall content accessible without accepting an unbounded height.
+        if (height > 10_000 && Number.parseFloat(frame.style.height) === 0) {
+          frame.style.removeProperty("height");
+        }
+        frame.scrolling = height > 10_000 ? "auto" : "no";
+        document.documentElement.classList.add("visualization-share-ready");
+      }
+      return;
+    }
+    if (data.type === "scroll-to") {
+      const top = data.top;
+      if (
+        typeof top === "number" &&
+        Number.isFinite(top) &&
+        top >= 0 &&
+        globalThis.navigator.userActivation?.isActive === true
+      ) {
+        globalThis.scrollTo({
+          top: Math.ceil(
+            globalThis.scrollY + frame.getBoundingClientRect().top + top,
+          ),
+        });
+      }
+      return;
+    }
+    if (data.type === "open-external") {
+      const rawHref = data.href;
+      if (typeof rawHref !== "string") {
+        return;
+      }
+      let href;
+      try {
+        const url = new URL(rawHref, document.baseURI);
+        if (url.protocol !== "https:") {
+          return;
+        }
+        href = url.href;
+      } catch {
+        return;
+      }
+      if (globalThis.navigator.userActivation?.isActive === true) {
+        const anchor = document.createElement("a");
+        anchor.href = href;
+        anchor.rel = "noopener noreferrer";
+        anchor.target = "_blank";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      }
+      return;
+    }
+    if (data.type === "follow-up") {
+      const prompt = data.prompt;
+      if (
+        typeof prompt !== "string" ||
+        globalThis.navigator.userActivation?.isActive !== true
+      ) {
+        return;
+      }
+      const title = data.title;
+      globalThis.prompt(typeof title === "string" ? title : prompt, prompt);
+    }
+  });
+  channel.port1.start();
+  const srcdoc = frame.dataset.srcdoc;
+  if (srcdoc == null) {
+    return;
+  }
+  globalThis.addEventListener("resize", () => {
+    const height = Number.parseFloat(frame.style.height);
+    if (!isShare && (!Number.isFinite(height) || height <= viewportHeight)) {
+      frame.style.removeProperty("height");
+    }
+    viewportHeight = globalThis.innerHeight;
+    channel.port1.postMessage({ type: "measure" });
+  });
+  frame.addEventListener(
+    "load",
+    () => {
+      frame.contentWindow?.postMessage(
+        { type: "codex-visualization-initialize" },
+        "*",
+        [channel.port2],
+      );
+    },
+    { once: true },
+  );
+  // Match the trusted bootstrap element, not the same text in an authored title.
+  const frameHtml = srcdoc.replace(
+    '<script type="application/json" id="codex-visualization-widget-state">__CODEX_VISUALIZATION_WIDGET_STATE__<\/script>',
+    () =>
+      '<script type="application/json" id="codex-visualization-widget-state">' +
+      JSON.stringify(initialGlobals).replaceAll("<", "\\u003c") +
+      "<\/script>",
+  );
+  if (isShare && storage != null) {
+    // Fingerprint the rendered document, including restored widget state, without
+    // storing its content. This is a layout cache, not a security identity.
+    let hash = 5381;
+    for (let index = 0; index < frameHtml.length; index += 1) {
+      hash = (hash * 33 + frameHtml.charCodeAt(index)) % 4_294_967_296;
+    }
+    sizeFingerprint = hash.toString(36);
+    try {
+      const size = JSON.parse(storage.getItem(sizeStorageKey) ?? "null");
+      if (
+        size?.fingerprint === sizeFingerprint &&
+        size.width === frame.clientWidth &&
+        size.viewportHeight === globalThis.innerHeight &&
+        size.dark ===
+          globalThis.matchMedia("(prefers-color-scheme: dark)").matches &&
+        size.scale === globalThis.devicePixelRatio &&
+        typeof size.height === "number" &&
+        Number.isFinite(size.height) &&
+        size.height >= 0 &&
+        size.height <= 10_000
+      ) {
+        frame.style.height = size.height + "px";
+      }
+    } catch {
+      // Ignore missing or invalid cache entries and measure the live frame.
+    }
+  }
+  frame.srcdoc = frameHtml;
+  delete frame.dataset.srcdoc;
+})();
+</script>
+</body>
+</html>

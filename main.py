@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()  # 必须在其他业务模块 import 前执行
 
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 from api.detect import router as detect_router, api_description
 from services.checker import API_SOURCE, AZURE_DEFAULT_MODEL, OLLAMA_DEFAULT_MODEL, OPENROUTER_DEFAULT_MODEL, close_azure_client
@@ -35,6 +35,8 @@ app.include_router(detect_router, prefix="/api")
 
 _DEMO_PAGE = Path(__file__).with_name("web") / "demo.html"
 _TASKS_PAGE = Path(__file__).with_name("web") / "tasks.html"
+_FLOWCHART_PAGE = Path(__file__).with_name("web") / "flowchart.html"
+_SCAN_FLOWCHART_PAGE = Path(__file__).with_name("web") / "scan-flowchart.html"
 _TOKEN_SCRIPT = Path(__file__).with_name("web") / "daily-token.js"
 _EXECUTION_SCRIPT = Path(__file__).with_name("web") / "execution-log.js"
 _HISTORY_SCRIPT = Path(__file__).with_name("web") / "task-history.js"
@@ -75,6 +77,16 @@ async def get_demo_page():
 @app.get("/demo", response_class=HTMLResponse, include_in_schema=False)
 async def get_demo_alias():
     return HTMLResponse(content=_render_demo_page("demo"), headers={"Cache-Control": "no-store"})
+
+
+@app.get("/demo/flow", include_in_schema=False)
+async def get_demo_flowchart():
+    return FileResponse(_FLOWCHART_PAGE, media_type="text/html", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/demo/flow/scan", include_in_schema=False)
+async def get_scan_flowchart():
+    return FileResponse(_SCAN_FLOWCHART_PAGE, media_type="text/html", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/test", response_class=HTMLResponse, include_in_schema=False)

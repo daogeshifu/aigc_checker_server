@@ -1,0 +1,273 @@
+<div id="aigc-complete-flow">
+  <h3>整体业务流程图</h3>
+  <div class="nav nav-pills" role="tablist" aria-label="流程板块">
+    <button type="button" class="nav-link active" id="aigc-tab-overview" role="tab" aria-controls="aigc-panel-overview" aria-selected="true">完整总览</button>
+    <button type="button" class="nav-link" id="aigc-tab-detection" role="tab" aria-controls="aigc-panel-detection" aria-selected="false">检测与复核</button>
+    <button type="button" class="nav-link" id="aigc-tab-rewrite" role="tab" aria-controls="aigc-panel-rewrite" aria-selected="false">改写与回滚</button>
+    <button type="button" class="nav-link" id="aigc-tab-output" role="tab" aria-controls="aigc-panel-output" aria-selected="false">输出与进度</button>
+  </div>
+  <div class="af-legend text-small" aria-label="图例">
+    <span><b class="af-swatch af-normal"></b>主流程</span>
+    <span><b class="af-swatch af-gate"></b>重点决策</span>
+    <span><b class="af-swatch af-fallback"></b>降级 / 异常</span>
+    <span><b class="af-swatch af-result"></b>最终输出</span>
+  </div>
+  <div id="aigc-panel-overview" role="tabpanel" aria-labelledby="aigc-tab-overview"><svg class="af-diagram" role="img" aria-label="完整流程：请求鉴权、套餐权限、文本校验、创建任务、检测或改写、同步结果输出与进度查询"></svg></div>
+  <div id="aigc-panel-detection" role="tabpanel" aria-labelledby="aigc-tab-detection" hidden><svg class="af-diagram" role="img" aria-label="检测引擎：预处理与分块、并发判断及统计回退、加权聚合、独立概率测量、Azure条件复核与证据状态"></svg></div>
+  <div id="aigc-panel-rewrite" role="tabpanel" aria-labelledby="aigc-tab-rewrite" hidden><svg class="af-diagram" role="img" aria-label="改写流程：原文检测、Azure语义改写、OpenRouter异常兜底、表达扰动与规则调整、完整复检、质量评估及回滚"></svg></div>
+  <div id="aigc-panel-output" role="tabpanel" aria-labelledby="aigc-tab-output" hidden><svg class="af-diagram" role="img" aria-label="输出流程：同步POST返回完整业务JSON，GET任务接口返回脱敏进度和执行摘要，按Token隔离任务"></svg></div>
+</div>
+<style>
+#aigc-complete-flow { color:var(--foreground); width:100%; }
+#aigc-complete-flow h3 { padding-right:90px; }
+#aigc-complete-flow .af-legend { display:flex; flex-wrap:wrap; gap:8px 18px; margin:14px 0 4px; }
+#aigc-complete-flow .af-legend span { display:inline-flex; align-items:center; gap:6px; }
+#aigc-complete-flow .af-swatch { display:inline-block; width:9px; height:9px; border-radius:2px; }
+#aigc-complete-flow .af-normal { background:var(--muted-foreground); }
+#aigc-complete-flow .af-gate { background:var(--viz-series-2); }
+#aigc-complete-flow .af-fallback { background:var(--viz-series-4); }
+#aigc-complete-flow .af-result { background:var(--viz-series-3); }
+#aigc-complete-flow .af-diagram { display:block; width:100%; overflow:visible; }
+#aigc-complete-flow .af-diagram text { fill:var(--foreground); font-family:var(--font-sans); }
+#aigc-complete-flow .af-section { font-weight:500; }
+#aigc-complete-flow .af-subtitle { fill:var(--muted-foreground); }
+#aigc-complete-flow .af-title { font-weight:500; }
+#aigc-complete-flow .af-link { fill:none; stroke:color-mix(in srgb,var(--foreground) 35%,var(--background)); stroke-width:1.5; }
+#aigc-complete-flow .af-label { fill:var(--muted-foreground); }
+#aigc-complete-flow .af-node { stroke:var(--border); stroke-width:1; fill:var(--background); }
+#aigc-complete-flow .af-node-gate { fill:color-mix(in srgb,var(--viz-series-2) 11%,var(--background)); }
+#aigc-complete-flow .af-node-fallback { fill:color-mix(in srgb,var(--viz-series-4) 9%,var(--background)); }
+#aigc-complete-flow .af-node-result { fill:color-mix(in srgb,var(--viz-series-3) 10%,var(--background)); }
+#aigc-complete-flow .af-keymark { fill:var(--viz-series-2); }
+#aigc-complete-flow .af-optional { stroke-dasharray:5 4; }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('aigc-complete-flow');
+  const NS = 'http://www.w3.org/2000/svg';
+  const views = ['overview','detection','rewrite','output'];
+  const node = (id,title,lines=[],kind='normal',tip='') => ({id,title,lines,kind,tip});
+  const flows = {
+    overview: [
+      {section:'01  接入与 API 授权', rows:[
+        {cells:[node('request','客户端发起同步 POST',['/api/scan 或 /api/reduce','Authorization: Bearer <访问 Token>'])]},
+        {cells:[node('auth','重点 · 校验 Bearer Token',['匹配顺序：Pro → Free → API_TOKEN'],'gate','填写项目访问 Token；模型服务 API Key 由服务器保管。API_TOKEN 未配置时使用代码默认值。'),node('unauth','鉴权失败 → HTTP 401',['缺少凭据 / Token 无效'],'fallback')],edges:[['request','auth'],['auth','unauth','无效']]},
+        {cells:[node('plan','建立套餐与权限上下文',['Free：检测，默认上限 3,000 字符','Pro / 管理员：检测 + 改写 + 条件复核','默认上限 12,000 字符'],'normal','上限由 FREE_MAX_CHARS / PRO_MAX_CHARS 配置；管理员 API_TOKEN 还可查看全部任务。')],edges:[['auth','plan','有效']]}
+      ]},
+      {section:'02  请求校验与任务建立', rows:[
+        {cells:[node('validate','校验文本、接口权限与请求字段',['清洗后 ≥ 50 字符；strip 后不超套餐上限','/reduce 需要 Pro 权限'],'gate'),node('invalid','拒绝请求，尚未创建任务',['400：文本过短 / 超长','403：Free 调用改写','422：请求字段不合法'],'fallback')],edges:[['plan','validate'],['validate','invalid','不通过']]},
+        {cells:[node('task','创建 task_id · 状态 running',['携带 request_id：派生固定任务 ID','未携带：服务端生成 ID'],'normal','唯一 request_id 为 UUID；task_id = scan-/reduce- + UUID 的32位hex。任务建立前可能暂时查到404。'),node('conflict','request_id 已用 → HTTP 409',['保留已有任务'],'fallback')],edges:[['validate','task','通过'],['task','conflict','重复']]}
+      ]},
+      {section:'03  业务分流', rows:[
+        {cells:[node('scan','检测分支 · /api/scan',['调用完整检测引擎 run_check','预处理 → 分块评分 → 聚合','可选 PPL → 条件 Azure 复核']),node('reduce','改写分支 · /api/reduce',['原文完整检测 → 组合式改写','改写稿完整复检 → 质量评估','重点：未改善时回滚原文'],'gate')],edges:[['task','scan','scan'],['task','reduce','reduce']]},
+        {cells:[node('scanresult','检测结果',['风险分、证据状态、分块与指标','模型 / 回退 / 复核元信息']),node('reduceresult','改写结果',['最终文本、rewrite、前后风险分','质量分、处理等级、修改记录'])],edges:[['scan','scanresult'],['reduce','reduceresult']]}
+      ]},
+      {section:'04  结果输出与全程追踪', rows:[
+        {cells:[node('finish','记录脱敏摘要 · 任务 success',['HTTP 200 同步返回完整 JSON + task_id'],'result','success 表示主流程完成；模型回退、证据不足或改写回滚也可返回200。'),node('error','主流程异常 · 任务 failed',['502：引擎结果无法解析','500：其他主流程异常','响应头 X-Task-ID'],'fallback')],edges:[['scanresult','finish'],['reduceresult','finish'],['scan','error','异常','optional','rail'],['reduce','error','异常','optional','rail']]},
+        {cells:[node('poll','执行期间 / 结束后均可查询',['GET /api/tasks/{task_id}','进度、脱敏摘要、执行轨迹','success / failed 后停止轮询'],'result','POST 始终同步返回完整业务结果。轮询不返回原文、完整检测报告或改写内容；普通Token仅查自己的任务，管理员可查全部。')],edges:[['finish','poll'],['error','poll']]}
+      ]}
+    ],
+    detection: [
+      {section:'01  文本预处理与分块', rows:[
+        {cells:[node('clean','清洗 → 语言 / 文体识别',['统一换行、空白；识别 zh / en / mixed','计算全文句长、重复率、词汇多样性等'])]},
+        {cells:[node('chunks','保留原文位置的句子分块',['目标 320 字符；最小目标 180','硬上限 480；长句 / 无标点文本也切分'],'normal','start/end 为清洗后文本的 Python 字符偏移。并发结果写回原顺序。')],edges:[['clean','chunks']]}
+      ]},
+      {section:'02  逐块并发判断与容错', rows:[
+        {cells:[node('features','逐块提取真实统计特征',['异步工作队列，完成一块即补位','默认最多 10 路，受配置与共享额度限制'],'normal','并发数 = min(块数, SCAN_CHUNK_CONCURRENCY, 提供方请求上限)，硬上限10。模型端仍可能自行排队。')],edges:[['chunks','features']]},
+        {cells:[node('skip','重点 · 短块 / 列表需跳过模型？',['按语言、句子数、字数和列表占比判断'],'gate'),node('stats','统计模式',['规则跳过：heuristic_skip','模型失败：heuristic_fallback'],'fallback','统计模式只使用 feature_score；置信度上限0.38，不伪装为模型成功。')],edges:[['features','skip'],['skip','stats','是']]},
+        {cells:[node('qwen','Qwen 独立判断 + 结构校验',['服务器 DETECTION_PROVIDER 选择','Ollama 或百炼；输入文本与文体'],'normal','请求 api_source 不能切换提供方；仅与实际提供方一致时，model 才可覆盖默认模型。Qwen不读取数值特征，避免重复锚定。')],edges:[['skip','qwen','否'],['qwen','stats','失败','optional','rail']]},
+        {cells:[node('blend','有效模型：70% 判断 + 30% 统计',['风格 signals 只作解释']),node('statsonly','跳过 / 失败：100% 统计',['不套用 70 / 30 模型融合'],'fallback')],edges:[['qwen','blend','有效'],['stats','statsonly','回退','','rail']]},
+        {cells:[node('adjust','分块规则修正 · 只执行一次',['文体修正；短文本向 50 收缩','单句、短文、模型分歧降低置信度'],'gate','学术/商业 -8，列表 -15，翻译 -6，营销 +3；短于120字符向50收缩。模型与统计差值≥35时置信度最多0.44。')],edges:[['blend','adjust'],['statsonly','adjust']]}
+      ]},
+      {section:'03  全文聚合与独立指标', rows:[
+        {cells:[node('aggregate','按分块字符数加权聚合',['全文风险分 + 置信度 + 高风险块','大量统计回退 / 明显分歧 → 保守结论'],'normal','置信度 high≥0.72 / medium≥0.45；统计回退权重≥50%、存在分歧或全文<120字符时保持low。高风险块阈值为65。')],edges:[['adjust','aggregate']]},
+        {cells:[node('ppl','可选 · 独立 CPU 原文概率测量',['对清洗后的整篇文本计算 NLL / PPL','disabled / measured / unavailable'],'normal','此步在分块聚合后执行。未开启或失败时PPL为null；失败添加warning并继续。'),node('pplnote','重点 · PPL 不参与风险分',['used_in_risk_score = false','Binoculars 当前为 null'],'gate')],edges:[['aggregate','ppl'],['ppl','pplnote','附加','optional']]}
+      ]},
+      {section:'04  Pro 条件复核 · 固定 Azure', rows:[
+        {cells:[node('reviewgate','重点 · 开关开启且 Pro 有复核权限？',['再满足任一：低置信度 / 风险分 40–65','或正式文体且高风险块 ≤ 1'],'gate'),node('noreview','未触发 / 提供方失败',['保留主检测结果'],'fallback')],edges:[['ppl','reviewgate'],['reviewgate','noreview','否']]},
+        {cells:[node('azure','Azure 对全文与代表片段复核',['复核不读取主检测数值分','失败记录轨迹并继续返回结果'],'normal','正式文体包括 academic / business_doc / list_or_table。复核失败不会转OpenRouter。')],edges:[['reviewgate','azure','是'],['azure','noreview','失败','optional','rail']]},
+        {cells:[node('reviewmerge','融合文档分 · 保留分块分数',['原置信度 low：60% 主分 + 40% 复核','其他：72% 主分 + 28% 复核'],'gate','review.scope=document_only；主分与复核差值≥35时仍标记证据不足。复核自报高置信度不直接提升至high。')],edges:[['azure','reviewmerge','有效']]}
+      ]},
+      {section:'05  检测结果封装', rows:[
+        {cells:[node('assessment','按证据状态确定最终 label',['low → Insufficient Evidence','其余 → 按风险区间输出标签'],'gate','score_label始终保留分数区间标签：≥70 AI Generated，≥40 Mixed，其余Human Written。risk_score未校准，不是来源概率。')],edges:[['reviewmerge','assessment'],['noreview','assessment','','optional','rail']]},
+        {cells:[node('detectout','返回 run_check 完整结果',['风险分 / 置信度 / 证据状态 / warnings','chunks / segments / metrics / probability','review / engine / plan'],'result','/scan直接输出；/reduce在原文检测、改写后复检时各复用一次完整引擎。')],edges:[['assessment','detectout']]}
+      ]}
+    ],
+    rewrite: [
+      {section:'01  原文完整检测', rows:[
+        {cells:[node('original','run_check · original_scan',['获取原文风险分与高风险片段','本轮可含 PPL 测量与 Azure 条件复核'])]}
+      ]},
+      {section:'02  组合式改写与逐级兜底', rows:[
+        {cells:[node('semantic','Step 1 · Azure 深度语义改写',['使用原文检测结果制定改写目标']),node('openrouter','OpenRouter 语义改写兜底',['仅 Azure 异常时进入'],'fallback','Azure返回有效但未发生文本变化时，直接进入未改写路径，不再尝试OpenRouter。')],edges:[['original','semantic'],['semantic','openrouter','异常']]},
+        {cells:[node('applied','重点 · 语义步骤产生有效改写？',['校验结构、清洗文本、确认文本有变化'],'gate'),node('unchanged','无有效改写 / 全部失败',['保留原文；rewrite=false','跳过表达扰动与规则调整'],'fallback')],edges:[['semantic','applied','有效返回'],['openrouter','applied','有效返回'],['applied','unchanged','否'],['openrouter','unchanged','仍失败','optional','rail']]},
+        {cells:[node('perturb','Step 2 · Qwen 表达扰动',['跟随服务器 Ollama / 百炼提供方','失败 / 无变化 → 保留当前稿继续'])],edges:[['applied','perturb','是']]},
+        {cells:[node('rules','Step 3 · 本地确定性规则调整',['合并过齐列表、补回原文细节锚点','无调整 → 保留当前稿继续'])],edges:[['perturb','rules']]}
+      ]},
+      {section:'03  完整复检与质量评估', rows:[
+        {cells:[node('rescan','run_check · reduced_scan',['清洗候选稿；空值回退原文','无有效改写时，原文仍会再检测一次','本轮同样可含 PPL 与 Azure 条件复核'],'gate')],edges:[['rules','rescan'],['unchanged','rescan','','optional','rail']]},
+        {cells:[node('quality','计算改写质量分',['成功改写：60% 内容保留 + 40% 风险下降','未改写：质量分 55，处理等级 light'],'normal','内容保留由词汇重叠与长度比估算；质量分不是事实准确率。changes最多8条；model是light/moderate/deep处理等级。')],edges:[['rescan','quality']]}
+      ]},
+      {section:'04  风险下降验证与回滚保护', rows:[
+        {cells:[node('successgate','rewrite 标记为 true？',[],'gate'),node('fallbackout','未改写 · 输出原文',['rewrite=false；quality_score=55','model=light；changes=[]'],'result')],edges:[['quality','successgate'],['successgate','fallbackout','否']]},
+        {cells:[node('improved','重点 · 复检风险分 < 原文风险分？',[],'gate'),node('rollback','未下降 → 回滚原文',['after=before；rewrite=false','质量分 55；light；清空 changes'],'fallback')],edges:[['successgate','improved','是'],['improved','rollback','否']]},
+        {cells:[node('keep','保留改写稿',['rewrite=true；返回下降后的风险分','三步均应用为 deep；否则 moderate'],'result')],edges:[['improved','keep','是']]},
+        {cells:[node('reduceout','返回改写摘要 + 最终保留文本',['reduced / rewrite / 前后风险分','前后证据状态 / quality_score','model / changes / task_id'],'result','不返回两次检测的完整chunks、metrics或probability；过程信息通过任务轨迹查询。')],edges:[['keep','reduceout'],['rollback','reduceout','','optional','rail'],['fallbackout','reduceout','','optional','rail']]}
+      ]}
+    ],
+    output: [
+      {section:'01  发起请求与定位任务', rows:[
+        {cells:[node('uuid','客户端生成唯一 request_id（可选）',['UUID → 预先派生 scan-/reduce- + hex','未提供时，task_id 随 POST 结果返回'])]},
+        {cells:[node('post','POST /api/scan 或 /api/reduce',['完成鉴权和校验后创建任务','请求保持等待，业务同步执行'],'gate'),node('preerrors','任务创建前拒绝',['401 / 400 / 403 / 422 / 409','重复 request_id 不覆盖旧任务'],'fallback')],edges:[['uuid','post'],['post','preerrors','拒绝']]}
+      ]},
+      {section:'02  业务执行与进度观察', rows:[
+        {cells:[node('execute','服务端执行检测 / 改写',['写入脱敏事件、阶段与分块完成数','任务 running，整体进度单调不减']),node('get','客户端 GET /api/tasks/{task_id}',['使用相同访问 Token','查询当前进度与脱敏执行轨迹'],'normal','普通Token只能查自己的任务；管理员API_TOKEN可查全部。不存在、不可见、过期均返回404；任务建立前也可能短暂404。')],edges:[['post','execute'],['execute','get','轮询','optional']]},
+        {cells:[node('terminal','主流程完成 / 异常',['success：进度 100','failed：保留失败前进度']),node('progress','轮询返回 result 与 events',['stage / progress / message','当前轮次 completed_chunks / total_chunks','running 继续；success / failed 停止'],'normal','进度为真实阶段/分块的估算，不是耗时百分比；运行中最多99。改写复检时当前分块计数重置，整体进度不回退。')],edges:[['execute','terminal'],['get','progress']]}
+      ]},
+      {section:'03  同步 POST 返回完整业务结果', rows:[
+        {cells:[node('http200','HTTP 200 · 完整业务 JSON + task_id',['模型回退、证据不足、改写回滚','均可能是正常完成'],'result'),node('httpfail','HTTP 502 / 500 · 错误 detail',['任务 failed；响应头 X-Task-ID','可继续查询脱敏排障轨迹'],'fallback')],edges:[['terminal','http200','完成'],['terminal','httpfail','异常']]},
+        {cells:[node('scanjson','/scan 输出',['risk_score / ai_probability','label / score_label / assessment_status','confidence / chunks / segments','metrics / probability / review / engine'],'result'),node('reducejson','/reduce 输出',['reduced / rewrite','ai_probability / ai_reduced_probability','quality_score / model / changes','detection_status_before / after'],'result')],edges:[['http200','scanjson','检测'],['http200','reducejson','改写']]}
+      ]},
+      {section:'04  结果解读与查询边界', rows:[
+        {cells:[node('semantics','重点 · 分数与状态口径',['risk_score：未校准的 AI 风格风险分','ai_probability：同一分数的历史字符串字段','low 置信度：证据不足','PPL 独立实测；当前不参与风险评分'],'gate'),node('privacy','任务查询仅保留脱敏信息',['阶段、分块数、模型调用、分数与耗时','无原文 / 改写文本 / 完整检测报告','GET /api/tasks 可筛选和分页'],'normal','summary.percentages为启发式展示权重，不代表内容比例；segments/sentences的实际粒度均为分块。原文与改写文本仅在同步POST业务响应中返回。')],edges:[['scanjson','semantics'],['reducejson','semantics'],['progress','privacy','','optional','rail']]}
+      ]}
+    ]
+  };
+  function el(tag,attrs={},text) {
+    const e=document.createElementNS(NS,tag);
+    Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));
+    if(text!==undefined)e.textContent=text;
+    return e;
+  }
+  const measureCanvas=document.createElement('canvas');
+  const ctx=measureCanvas.getContext('2d');
+  function wrap(text,maxWidth,size,weight=400) {
+    ctx.font=weight+' '+size+'px '+(getComputedStyle(root).fontFamily||'sans-serif');
+    const words=String(text).match(/[A-Za-z0-9_./{}<>:+-]+|\s+|[^\x00-\x7F]|./g)||[];
+    const out=[];let line='';
+    for(const token of words){
+      if(ctx.measureText(line+token).width>maxWidth && line){out.push(line.trim());line='';}
+      if(ctx.measureText(token).width>maxWidth){
+        for(const ch of token){if(ctx.measureText(line+ch).width>maxWidth&&line){out.push(line.trim());line='';}line+=ch;}
+      } else line+=token;
+    }
+    if(line.trim())out.push(line.trim());
+    return out;
+  }
+  function draw(key,width){
+    const svg=root.querySelector('#aigc-panel-'+key+' svg');
+    svg.replaceChildren();
+    const base=parseFloat(getComputedStyle(root).getPropertyValue('--font-size-base'))||14;
+    const font=base,small=Math.max(11,base-2),line=font*1.5,subline=small*1.6;
+    const narrow=width<590,margin=narrow?14:20,gap=narrow?0:48;
+    const full=width-margin*2,col=(full-gap)/2;
+    const registry=new Map(),links=[],sections=[],nodes=[];
+    let y=14;
+    flows[key].forEach((section,si)=>{
+      if(si)y+=25;
+      sections.push({title:section.section,y});y+=35;
+      section.rows.forEach(row=>{
+        if(row.edges)links.push(...row.edges);
+        if(narrow){
+          row.cells.forEach((n,ni)=>{
+            const mainLines=wrap(n.title,full-34,font,500);
+            const subLines=n.lines.flatMap(t=>wrap(t,full-34,small));
+            const h=24+mainLines.length*line+subLines.length*subline+(subLines.length?5:0);
+            const item={...n,x:margin,y,w:full,h,mainLines,subLines};
+            registry.set(n.id,item);nodes.push(item);y+=h+(ni<row.cells.length-1?40:0);
+          });y+=38;
+        }else{
+          const entries=row.cells.map((n,i)=>{
+            const w=row.cells.length===1?Math.min(full,470):col;
+            const x=row.cells.length===1?(width-w)/2:margin+i*(col+gap);
+            const mainLines=wrap(n.title,w-34,font,500);
+            const subLines=n.lines.flatMap(t=>wrap(t,w-34,small));
+            const h=24+mainLines.length*line+subLines.length*subline+(subLines.length?5:0);
+            return {...n,x,y,w,h,mainLines,subLines};
+          });
+          entries.forEach(n=>{registry.set(n.id,n);nodes.push(n);});
+          y+=Math.max(...entries.map(n=>n.h))+40;
+        }
+      });
+    });
+    const height=y-20;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.setAttribute('height',height);
+    const defs=el('defs');
+    const marker=el('marker',{id:'af-arrow-'+key,viewBox:'0 0 8 8',refX:7,refY:4,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'});
+    marker.append(el('path',{d:'M 1 1 L 7 4 L 1 7',fill:'none',stroke:'var(--muted-foreground)','stroke-width':1.2}));defs.append(marker);svg.append(defs);
+    const edgeLayer=el('g',{'aria-hidden':'true'});svg.append(edgeLayer);
+    const labelLayer=el('g',{'aria-hidden':'true'}),drawnLabels=new Set();
+    links.forEach(([from,to,label='',style='',route=''])=>{
+      const a=registry.get(from),b=registry.get(to);if(!a||!b)return;
+      let d,lx,ly,anchor='middle';
+      const sideBySide=!narrow&&Math.abs(a.y-b.y)<3;
+      const backwards=b.y<a.y;
+      const mobileSkip=narrow&&nodes.some(n=>n.id!==a.id&&n.id!==b.id&&n.y>a.y&&n.y<b.y);
+      const rail=route==='rail'||backwards||mobileSkip;
+      if(sideBySide){
+        const left=a.x<b.x,start=left?a.x+a.w:a.x,end=left?b.x:b.x+b.w;
+        const yy=Math.min(a.y+a.h/2,b.y+b.h/2);d=`M ${start} ${yy} H ${end}`;lx=(start+end)/2;ly=yy-8;
+      }else if(rail){
+        const right=a.x+a.w/2>=width/2;
+        const railX=right?width-(narrow?3:6):(narrow?3:6);
+        const ax=right?a.x+a.w:a.x,bx=b.x+b.w/2;
+        const ay=a.y+a.h*.67,by=b.y-14;
+        d=`M ${ax} ${ay} H ${railX} V ${by} H ${bx} V ${b.y}`;
+        lx=right?railX-7:railX+7;ly=a.y+a.h+18;anchor=right?'end':'start';
+      }else{
+        const ax=a.x+a.w/2,bx=b.x+b.w/2,ay=a.y+a.h,by=b.y,mid=(ay+by)/2;
+        d=`M ${ax} ${ay} V ${mid} H ${bx} V ${by}`;lx=Math.abs(ax-bx)<20?ax+8:(ax+bx)/2;ly=mid-6;anchor=Math.abs(ax-bx)<20?'start':'middle';
+      }
+      edgeLayer.append(el('path',{d,class:'af-link'+(style==='optional'?' af-optional':''),'marker-end':`url(#af-arrow-${key})`}));
+      const labelKey=[label,Math.round(lx),Math.round(ly)].join(':');
+      if(label&&!drawnLabels.has(labelKey)){
+        drawnLabels.add(labelKey);
+        const t=el('text',{x:lx,y:ly,class:'af-label','font-size':small,'text-anchor':anchor},label);
+        labelLayer.append(t);
+      }
+    });
+    sections.forEach(s=>{
+      const lines=wrap(s.title,full,font,500);
+      ctx.font='500 '+font+'px '+(getComputedStyle(root).fontFamily||'sans-serif');
+      svg.append(el('rect',{x:margin-3,y:s.y-2,width:ctx.measureText(lines[0]).width+10,height:font+9,fill:'var(--background)'}));
+      const t=el('text',{x:margin,y:s.y+font,class:'af-section','font-size':font},lines[0]);
+      svg.append(t);
+    });
+    nodes.forEach(n=>{
+      const g=el('g',{'data-node':n.id});
+      if(n.tip)g.setAttribute('data-tooltip',n.tip);
+      g.append(el('title',{},[n.title,...n.lines,n.tip].filter(Boolean).join('；')));
+      const shape=el('rect',{x:n.x,y:n.y,width:n.w,height:n.h,rx:n.kind==='gate'?3:10,class:'af-node'+(n.kind!=='normal'?' af-node-'+n.kind:'')});g.append(shape);
+      if(n.kind==='gate')g.append(el('rect',{x:n.x+1,y:n.y+10,width:3,height:n.h-20,rx:1,class:'af-keymark'}));
+      let ty=n.y+16+font*.8;
+      n.mainLines.forEach(t=>{g.append(el('text',{x:n.x+n.w/2,y:ty,'text-anchor':'middle','font-size':font,class:'af-title'},t));ty+=line;});
+      if(n.subLines.length)ty+=3;
+      n.subLines.forEach(t=>{g.append(el('text',{x:n.x+n.w/2,y:ty,'text-anchor':'middle','font-size':small,class:'af-subtitle'},t));ty+=subline;});
+      svg.append(g);
+    });
+    svg.append(labelLayer);
+  }
+  function redraw(){
+    const width=Math.round(root.getBoundingClientRect().width);
+    if(width>0)views.forEach(key=>draw(key,width));
+  }
+  function activate(key,save=false){
+    if(!views.includes(key))key='overview';
+    views.forEach(v=>{
+      const active=v===key;
+      const button=root.querySelector('#aigc-tab-'+v);
+      button.setAttribute('aria-selected',String(active));button.classList.toggle('active',active);
+      root.querySelector('#aigc-panel-'+v).hidden=!active;
+    });
+    if(save&&window.openai?.setWidgetState)window.openai.setWidgetState({modelContent:{flow_view:key},privateContent:null}).catch(()=>{});
+  }
+  views.forEach(key=>root.querySelector('#aigc-tab-'+key).addEventListener('click',()=>activate(key,true)));
+  const state=window.openai?.widgetState;
+  activate(state?.modelContent?.flow_view||'overview');
+  window.addEventListener('openai:set_globals',event=>{
+    const s=event.detail?.globals?.widgetState;
+    if(s)activate(s.modelContent?.flow_view||'overview');
+  });
+  new ResizeObserver(redraw).observe(root);
+  if(document.fonts?.ready)document.fonts.ready.then(redraw);
+  redraw();
+})();
+</script>
