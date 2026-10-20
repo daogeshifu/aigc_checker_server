@@ -119,7 +119,7 @@ class ApiTests(unittest.TestCase):
                 'plan':'free', 'can_remote_review':False, 'can_reduce':False,
                 'max_chars':3000, 'client_id':'another-client', 'can_view_all_tasks':False,
             }
-            self.assertEqual(client.get('/api/tasks/' + task_id).status_code, 404)
+            self.assertEqual(client.get('/api/tasks/' + task_id).status_code, 200)
             self.assertEqual(client.post('/api/scan', json=request).status_code, 409)
             self.assertEqual(task_log.get_task(task_id, client_id='tests'), original)
 

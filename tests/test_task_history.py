@@ -1,4 +1,4 @@
-"""Task history pagination, return timestamps and caller isolation."""
+"""Public task history pagination, return timestamps and business API auth."""
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import tempfile
@@ -77,15 +77,28 @@ class TaskHistoryTests(unittest.TestCase):
         self.assertEqual([task['task_id'] for task in payload['items']], ['scan-api-success'])
         self.assertEqual(self.client.get('/api/tasks?search=%25', headers=self.headers()).json()['total'], 0)
 
-    def test_non_admin_cannot_expand_list_or_detail_scope(self):
+    def test_history_is_public_and_includes_all_callers(self):
         self.seed('scan-mine')
         self.seed('scan-other', token='history-b')
-        for query in ('', '?source=api', '?search=other', '?offset=1'):
-            payload = self.client.get('/api/tasks' + query, headers=self.headers('history-a')).json()
-            self.assertFalse(payload['can_view_all_tasks'])
-            self.assertTrue(all(task['task_id'] == 'scan-mine' for task in payload['items']))
-        self.assertEqual(self.client.get('/api/tasks/scan-other', headers=self.headers('history-a')).status_code, 404)
-        self.assertEqual(self.client.get('/api/tasks', headers=self.headers('invalid')).status_code, 401)
+        for headers in ({}, self.headers('history-a'), self.headers('invalid')):
+            response = self.client.get('/api/tasks', headers=headers)
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertTrue(payload['can_view_all_tasks'])
+            self.assertEqual({task['task_id'] for task in payload['items']}, {'scan-mine', 'scan-other'})
+            detail = self.client.get('/api/tasks/scan-other', headers=headers)
+            self.assertEqual(detail.status_code, 200)
+            self.assertNotIn('client_id', detail.json())
+        search = self.client.get('/api/tasks?search=other').json()
+        self.assertEqual([task['task_id'] for task in search['items']], ['scan-other'])
+        self.assertEqual(self.client.get('/api/tasks/missing').status_code, 404)
+
+    def test_scan_and_reduce_still_require_valid_tokens(self):
+        for endpoint in ('scan', 'reduce'):
+            for headers in ({}, self.headers('invalid')):
+                response = self.client.post('/api/' + endpoint, headers=headers, json={'content': 'sample content. ' * 10})
+                self.assertEqual(response.status_code, 401)
+        self.assertEqual(self.client.get('/api/tasks').json()['total'], 0)
 
     def test_pagination_reaches_history_beyond_first_200_tasks(self):
         for index in range(205):

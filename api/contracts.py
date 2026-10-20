@@ -144,7 +144,7 @@ class TaskSummary(DocumentedResponse):
 class TaskListResponse(DocumentedResponse):
     items: list[TaskSummary]
     total: int = Field(description="当前权限及筛选条件下的全部保留任务数。")
-    can_view_all_tasks: bool = Field(description="是否使用管理员权限查看所有调用方的任务。")
+    can_view_all_tasks: bool = Field(description="是否可查看全部调用方。任务记录公开查询，此字段兼容保留并返回 true。")
     retention_limit: int = Field(description="服务端配置的任务保留数量上限。")
 
 
@@ -177,10 +177,10 @@ class ErrorResponse(BaseModel):
     detail: str
 
 
-def error_responses(*, task=False, forbidden=False, missing=False):
+def error_responses(*, task=False, forbidden=False, missing=False, authenticated=True):
     responses = {
         401: {"model": ErrorResponse, "description": "缺少有效 Bearer Token 或 Token 无效；请使用业务访问 Token，而非模型 API Key。"},
-    }
+    } if authenticated else {}
     if forbidden:
         responses[403] = {"model": ErrorResponse, "description": "当前套餐不支持改写，Free 套餐需要 Pro 权限。"}
     if task:
@@ -192,5 +192,5 @@ def error_responses(*, task=False, forbidden=False, missing=False):
             502: {"model": ErrorResponse, "description": "引擎结果无法解析。", "headers": header},
         })
     if missing:
-        responses[404] = {"model": ErrorResponse, "description": "任务不存在、已过期，或不属于当前 Token。"}
+        responses[404] = {"model": ErrorResponse, "description": "任务不存在或已过期。"}
     return responses

@@ -1803,7 +1803,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;div id=&quot;aigc-panel-overview&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;aigc-tab-overview&quot;&gt;&lt;svg class=&quot;af-diagram&quot; role=&quot;img&quot; aria-label=&quot;完整流程：请求鉴权、套餐权限、文本校验、创建任务、检测或改写、同步结果输出与进度查询&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
   &lt;div id=&quot;aigc-panel-detection&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;aigc-tab-detection&quot; hidden&gt;&lt;svg class=&quot;af-diagram&quot; role=&quot;img&quot; aria-label=&quot;检测引擎：预处理与分块、并发判断及统计回退、加权聚合、独立概率测量、Azure条件复核与证据状态&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
   &lt;div id=&quot;aigc-panel-rewrite&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;aigc-tab-rewrite&quot; hidden&gt;&lt;svg class=&quot;af-diagram&quot; role=&quot;img&quot; aria-label=&quot;改写流程：原文检测、Azure语义改写、OpenRouter异常兜底、表达扰动与规则调整、完整复检、质量评估及回滚&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
-  &lt;div id=&quot;aigc-panel-output&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;aigc-tab-output&quot; hidden&gt;&lt;svg class=&quot;af-diagram&quot; role=&quot;img&quot; aria-label=&quot;输出流程：同步POST返回完整业务JSON，GET任务接口返回脱敏进度和执行摘要，按Token隔离任务&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
+  &lt;div id=&quot;aigc-panel-output&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;aigc-tab-output&quot; hidden&gt;&lt;svg class=&quot;af-diagram&quot; role=&quot;img&quot; aria-label=&quot;输出流程：同步POST返回完整业务JSON，GET任务接口返回脱敏进度和执行摘要，无需Token查询全部保留任务&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
 &lt;/div&gt;
 &lt;style&gt;
 #aigc-complete-flow { color:var(--foreground); width:100%; }
@@ -1841,7 +1841,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       {section:&#x27;01  接入与 API 授权&#x27;, rows:[
         {cells:[node(&#x27;request&#x27;,&#x27;客户端发起同步 POST&#x27;,[&#x27;/api/scan 或 /api/reduce&#x27;,&#x27;Authorization: Bearer &lt;访问 Token&gt;&#x27;])]},
         {cells:[node(&#x27;auth&#x27;,&#x27;重点 · 校验 Bearer Token&#x27;,[&#x27;匹配顺序：Pro → Free → API_TOKEN&#x27;],&#x27;gate&#x27;,&#x27;填写项目访问 Token；模型服务 API Key 由服务器保管。API_TOKEN 未配置时使用代码默认值。&#x27;),node(&#x27;unauth&#x27;,&#x27;鉴权失败 → HTTP 401&#x27;,[&#x27;缺少凭据 / Token 无效&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;request&#x27;,&#x27;auth&#x27;],[&#x27;auth&#x27;,&#x27;unauth&#x27;,&#x27;无效&#x27;]]},
-        {cells:[node(&#x27;plan&#x27;,&#x27;建立套餐与权限上下文&#x27;,[&#x27;Free：检测，默认上限 3,000 字符&#x27;,&#x27;Pro / 管理员：检测 + 改写 + 条件复核&#x27;,&#x27;默认上限 12,000 字符&#x27;],&#x27;normal&#x27;,&#x27;上限由 FREE_MAX_CHARS / PRO_MAX_CHARS 配置；管理员 API_TOKEN 还可查看全部任务。&#x27;)],edges:[[&#x27;auth&#x27;,&#x27;plan&#x27;,&#x27;有效&#x27;]]}
+        {cells:[node(&#x27;plan&#x27;,&#x27;建立套餐与权限上下文&#x27;,[&#x27;Free：检测，默认上限 3,000 字符&#x27;,&#x27;Pro / 管理员：检测 + 改写 + 条件复核&#x27;,&#x27;默认上限 12,000 字符&#x27;],&#x27;normal&#x27;,&#x27;上限由 FREE_MAX_CHARS / PRO_MAX_CHARS 配置；任务记录无需 Token 即可查询。&#x27;)],edges:[[&#x27;auth&#x27;,&#x27;plan&#x27;,&#x27;有效&#x27;]]}
       ]},
       {section:&#x27;02  请求校验与任务建立&#x27;, rows:[
         {cells:[node(&#x27;validate&#x27;,&#x27;校验文本、接口权限与请求字段&#x27;,[&#x27;清洗后 ≥ 50 字符；strip 后不超套餐上限&#x27;,&#x27;/reduce 需要 Pro 权限&#x27;],&#x27;gate&#x27;),node(&#x27;invalid&#x27;,&#x27;拒绝请求，尚未创建任务&#x27;,[&#x27;400：文本过短 / 超长&#x27;,&#x27;403：Free 调用改写&#x27;,&#x27;422：请求字段不合法&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;plan&#x27;,&#x27;validate&#x27;],[&#x27;validate&#x27;,&#x27;invalid&#x27;,&#x27;不通过&#x27;]]},
@@ -1853,7 +1853,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       ]},
       {section:&#x27;04  结果输出与全程追踪&#x27;, rows:[
         {cells:[node(&#x27;finish&#x27;,&#x27;记录脱敏摘要 · 任务 success&#x27;,[&#x27;HTTP 200 同步返回完整 JSON + task_id&#x27;],&#x27;result&#x27;,&#x27;success 表示主流程完成；模型回退、证据不足或改写回滚也可返回200。&#x27;),node(&#x27;error&#x27;,&#x27;主流程异常 · 任务 failed&#x27;,[&#x27;502：引擎结果无法解析&#x27;,&#x27;500：其他主流程异常&#x27;,&#x27;响应头 X-Task-ID&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;scanresult&#x27;,&#x27;finish&#x27;],[&#x27;reduceresult&#x27;,&#x27;finish&#x27;],[&#x27;scan&#x27;,&#x27;error&#x27;,&#x27;异常&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;],[&#x27;reduce&#x27;,&#x27;error&#x27;,&#x27;异常&#x27;,&#x27;optional&#x27;,&#x27;rail&#x27;]]},
-        {cells:[node(&#x27;poll&#x27;,&#x27;执行期间 / 结束后均可查询&#x27;,[&#x27;GET /api/tasks/{task_id}&#x27;,&#x27;进度、脱敏摘要、执行轨迹&#x27;,&#x27;success / failed 后停止轮询&#x27;],&#x27;result&#x27;,&#x27;POST 始终同步返回完整业务结果。轮询不返回原文、完整检测报告或改写内容；普通Token仅查自己的任务，管理员可查全部。&#x27;)],edges:[[&#x27;finish&#x27;,&#x27;poll&#x27;],[&#x27;error&#x27;,&#x27;poll&#x27;]]}
+        {cells:[node(&#x27;poll&#x27;,&#x27;执行期间 / 结束后均可查询&#x27;,[&#x27;GET /api/tasks/{task_id}&#x27;,&#x27;进度、脱敏摘要、执行轨迹&#x27;,&#x27;success / failed 后停止轮询&#x27;],&#x27;result&#x27;,&#x27;POST 始终同步返回完整业务结果。轮询不返回原文、完整检测报告或改写内容；无需 Token 即可查询全部保留任务。&#x27;)],edges:[[&#x27;finish&#x27;,&#x27;poll&#x27;],[&#x27;error&#x27;,&#x27;poll&#x27;]]}
       ]}
     ],
     detection: [
@@ -1909,7 +1909,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         {cells:[node(&#x27;post&#x27;,&#x27;POST /api/scan 或 /api/reduce&#x27;,[&#x27;完成鉴权和校验后创建任务&#x27;,&#x27;请求保持等待，业务同步执行&#x27;],&#x27;gate&#x27;),node(&#x27;preerrors&#x27;,&#x27;任务创建前拒绝&#x27;,[&#x27;401 / 400 / 403 / 422 / 409&#x27;,&#x27;重复 request_id 不覆盖旧任务&#x27;],&#x27;fallback&#x27;)],edges:[[&#x27;uuid&#x27;,&#x27;post&#x27;],[&#x27;post&#x27;,&#x27;preerrors&#x27;,&#x27;拒绝&#x27;]]}
       ]},
       {section:&#x27;02  业务执行与进度观察&#x27;, rows:[
-        {cells:[node(&#x27;execute&#x27;,&#x27;服务端执行检测 / 改写&#x27;,[&#x27;写入脱敏事件、阶段与分块完成数&#x27;,&#x27;任务 running，整体进度单调不减&#x27;]),node(&#x27;get&#x27;,&#x27;客户端 GET /api/tasks/{task_id}&#x27;,[&#x27;使用相同访问 Token&#x27;,&#x27;查询当前进度与脱敏执行轨迹&#x27;],&#x27;normal&#x27;,&#x27;普通Token只能查自己的任务；管理员API_TOKEN可查全部。不存在、不可见、过期均返回404；任务建立前也可能短暂404。&#x27;)],edges:[[&#x27;post&#x27;,&#x27;execute&#x27;],[&#x27;execute&#x27;,&#x27;get&#x27;,&#x27;轮询&#x27;,&#x27;optional&#x27;]]},
+        {cells:[node(&#x27;execute&#x27;,&#x27;服务端执行检测 / 改写&#x27;,[&#x27;写入脱敏事件、阶段与分块完成数&#x27;,&#x27;任务 running，整体进度单调不减&#x27;]),node(&#x27;get&#x27;,&#x27;客户端 GET /api/tasks/{task_id}&#x27;,[&#x27;无需访问 Token&#x27;,&#x27;查询当前进度与脱敏执行轨迹&#x27;],&#x27;normal&#x27;,&#x27;无需 Token 即可查询。不存在或过期返回404；任务建立前也可能短暂404。&#x27;)],edges:[[&#x27;post&#x27;,&#x27;execute&#x27;],[&#x27;execute&#x27;,&#x27;get&#x27;,&#x27;轮询&#x27;,&#x27;optional&#x27;]]},
         {cells:[node(&#x27;terminal&#x27;,&#x27;主流程完成 / 异常&#x27;,[&#x27;success：进度 100&#x27;,&#x27;failed：保留失败前进度&#x27;]),node(&#x27;progress&#x27;,&#x27;轮询返回 result 与 events&#x27;,[&#x27;stage / progress / message&#x27;,&#x27;当前轮次 completed_chunks / total_chunks&#x27;,&#x27;running 继续；success / failed 停止&#x27;],&#x27;normal&#x27;,&#x27;进度为真实阶段/分块的估算，不是耗时百分比；运行中最多99。改写复检时当前分块计数重置，整体进度不回退。&#x27;)],edges:[[&#x27;execute&#x27;,&#x27;terminal&#x27;],[&#x27;get&#x27;,&#x27;progress&#x27;]]}
       ]},
       {section:&#x27;03  同步 POST 返回完整业务结果&#x27;, rows:[

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_security = HTTPBearer(description="填写本项目访问 Token，不是百炼/Azure API Key。Free 仅检测；Pro 支持检测、改写及条件复核；API_TOKEN 管理员还可查看全部任务。")
+_security = HTTPBearer(description="检测和改写需填写本项目访问 Token，不是百炼/Azure API Key。Free 仅检测；Pro 支持检测、改写及条件复核。任务记录查询无需 Token。")
 _API_TOKEN = os.getenv("API_TOKEN") or "aigcchecker"
 _FREE_API_TOKENS = {token.strip() for token in os.getenv("FREE_API_TOKENS", "").split(",") if token.strip()}
 _PRO_API_TOKENS = {token.strip() for token in os.getenv("PRO_API_TOKENS", "").split(",") if token.strip()}
@@ -30,7 +30,7 @@ _PRO_MAX_CHARS = int(os.getenv("PRO_MAX_CHARS", "12000"))
 
 
 def _client_id(plan: str, token: str) -> str:
-    """用不可逆摘要隔离不同 Token 的任务记录，不把 Token 本身写入数据库。"""
+    """用不可逆摘要标记任务调用方，不把 Token 本身写入数据库。"""
     digest = hashlib.sha256(token.encode("utf-8")).hexdigest()[:16]
     return f"{plan}:{digest}"
 
@@ -114,7 +114,7 @@ def api_description() -> str:
 ### 调用方式
 点击 Authorize 填写本项目访问 Token。POST /scan、/reduce 为同步接口；长文本/CPU 评分可能耗时较长。
 可提供唯一 request_id，同时 GET /api/tasks/{{task_id}} 轮询；result.stage/progress/message 返回阶段、进度及展示文案。
-status 为 success/failed 时停止轮询，成功时 result 同时包含脱敏业务结果摘要。任务按 Token 隔离，管理员可查看全部任务。
+status 为 success/failed 时停止轮询，成功时 result 同时包含脱敏业务结果摘要。任务列表和详情无需 Token，可查看全部保留记录。
 """
 
 
@@ -309,7 +309,7 @@ async def reduce_document(request: ScanRequest, auth_context: dict = Security(_v
 
 
 @router.get("/tasks", tags=["任务日志"], summary="查询任务列表",
-            responses={200: {"model": TaskListResponse}, **error_responses()})
+            responses={200: {"model": TaskListResponse}, **error_responses(authenticated=False)})
 async def task_history(
     limit: int = Query(default=200, ge=1, le=200, description="返回条数上限，实际条数受服务端任务保留数量限制。"),
     offset: int = Query(default=0, ge=0, description="分页偏移量，可遍历全部保留的任务。"),
@@ -317,25 +317,23 @@ async def task_history(
     task_type: Literal["scan", "reduce"] | None = Query(default=None),
     status: Literal["running", "success", "failed"] | None = Query(default=None),
     search: str | None = Query(default=None, max_length=100, description="按任务 ID 搜索。"),
-    _auth_context: dict = Security(_verify_token),
 ):
     """按创建时间倒序返回最近任务的脱敏摘要，不包含原文、完整检测报告或改写内容。
 
-    普通/会员 Token 仅能查询自己的任务；管理 API_TOKEN 可查询全部任务。
+    无需 Token，返回全部调用方仍保留的任务。
     """
-    client_id = None if _auth_context["can_view_all_tasks"] else _auth_context["client_id"]
     return {
-        **query_tasks(client_id, limit=limit, offset=offset, source=source,
+        **query_tasks(None, limit=limit, offset=offset, source=source,
                       task_type=task_type, status=status, search=search),
-        "can_view_all_tasks": _auth_context["can_view_all_tasks"],
+        "can_view_all_tasks": True,
         "retention_limit": TASK_LOG_MAX_RECORDS,
     }
 
 
 @router.get("/tasks/{task_id}", tags=["任务日志"], summary="轮询任务进度、结果摘要与执行轨迹",
-            responses={200: {"model": TaskDetailResponse}, **error_responses(missing=True)})
-async def task_detail(task_id: str, _auth_context: dict = Security(_verify_token)):
-    """查询进行中或已结束任务，适合轮询执行进度。权限与任务列表一致，不可见/过期任务返回404。
+            responses={200: {"model": TaskDetailResponse}, **error_responses(missing=True, authenticated=False)})
+async def task_detail(task_id: str):
+    """无需 Token 查询进行中或已结束任务，适合轮询执行进度。不存在或已过期任务返回404。
 
     - 顶层结构及 status=running/success/failed 保持一致，result 在各状态下均返回阶段、进度和展示文案。
     - result.stage/progress/message 可直接驱动加载动画；分块计数按当前 scan_phase 统计，改写复检时重新计数，整体进度不回退。
@@ -346,8 +344,7 @@ async def task_detail(task_id: str, _auth_context: dict = Security(_verify_token
     - 调用次数区分尝试、成功、失败和待确认；一次判断内部可能有格式重试，不等同于底层 HTTP 请求数。
     - 服务端不保存原文/改写文本；任务状态 success 表示接口完成，不代表检测来源判断一定准确或所有模型调用均成功。
     """
-    client_id = None if _auth_context["can_view_all_tasks"] else _auth_context["client_id"]
-    task = get_task(task_id, client_id=client_id)
+    task = get_task(task_id, client_id=None)
     if not task:
         raise HTTPException(status_code=404, detail="任务记录不存在或已过期")
     return task

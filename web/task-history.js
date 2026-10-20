@@ -2,14 +2,14 @@ window.createTaskHistory = options => {
   const view = window.createTaskLogView(options);
   const $ = selector => document.querySelector(selector);
   const pageSize = 20;
-  let authToken = '', page = 1, total = 0, selectedId = null;
+  let page = 1, total = 0, selectedId = null;
   let listController = null, detailController = null, loading = false, detailLoading = false, generation = 0, searchTimer;
   const filters = ['#historySource', '#historyType', '#historyStatus'];
 
-  async function read(url, controller, requestToken) {
+  async function read(url, controller) {
     const timeout = setTimeout(() => controller.abort(), 8000);
     try {
-      const response = await fetch(url, { headers:{Authorization:`Bearer ${requestToken}`}, cache:'no-store', signal:controller.signal });
+      const response = await fetch(url, { cache:'no-store', signal:controller.signal });
       const data = await response.json();
       if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `日志接口 HTTP ${response.status}`);
       return data;
@@ -17,11 +17,9 @@ window.createTaskHistory = options => {
   }
 
   async function load() {
-    if (!authToken) return;
     const currentGeneration = ++generation;
     listController?.abort();
     const controller = listController = new AbortController();
-    const requestToken = authToken;
     loading = true;
     $('#refreshHistoryBtn').disabled = true;
     $('#historyMessage').textContent = '正在读取任务日志…';
@@ -31,13 +29,13 @@ window.createTaskHistory = options => {
       if (value) params.set(key, value);
     }
     try {
-      const data = await read(`/api/tasks?${params}`, controller, requestToken);
-      if (currentGeneration !== generation || requestToken !== authToken) return;
+      const data = await read(`/api/tasks?${params}`, controller);
+      if (currentGeneration !== generation) return;
       total = data.total;
       const maxPage = Math.max(1, Math.ceil(total / pageSize));
       if (page > maxPage) { page = maxPage; return load(); }
-      $('#historyScope').textContent = data.can_view_all_tasks ? '管理权限 · 全部调用方' : '当前 Token 的任务';
-      $('#historyMessage').textContent = `${data.can_view_all_tasks ? '包含 Demo、测试页和外部 API 任务' : '当前 Token 仅可查看自己的任务；查看全部调用方请使用管理 Token'} · 服务端最多保留 ${data.retention_limit} 条 · 更新于 ${new Date().toLocaleTimeString('zh-CN', {hour12:false})}`;
+      $('#historyScope').textContent = '全部调用方 · 无需 Token';
+      $('#historyMessage').textContent = `包含 Demo、测试页和外部 API 任务 · 服务端最多保留 ${data.retention_limit} 条 · 更新于 ${new Date().toLocaleTimeString('zh-CN', {hour12:false})}`;
       $('#historyPageInfo').textContent = `第 ${page} / ${maxPage} 页 · 共 ${total} 条`;
       $('#historyPrevBtn').disabled = page <= 1;
       $('#historyNextBtn').disabled = page >= maxPage;
@@ -45,7 +43,7 @@ window.createTaskHistory = options => {
       $('#historyTable').innerHTML = rows.length ? `<table><thead><tr><th>任务 / 接口</th><th>来源</th><th>状态</th><th>返回结果</th><th>开始时间</th><th>返回时间</th><th>耗时</th><th>过程</th></tr></thead><tbody>${rows.map(rowHtml).join('')}</tbody></table>` : '<p class="execution-empty">暂无符合条件的任务记录。</p>';
       $('#historyTable').querySelectorAll('[data-history-task]').forEach(button => button.addEventListener('click', () => openDetail(button.dataset.historyTask)));
     } catch (error) {
-      if (currentGeneration !== generation || requestToken !== authToken) return;
+      if (currentGeneration !== generation) return;
       $('#historyMessage').textContent = controller.signal.aborted ? '日志读取超时，请刷新重试。' : `日志读取失败：${error.message}。`;
     } finally {
       if (currentGeneration === generation) { loading = false; $('#refreshHistoryBtn').disabled = false; }
@@ -76,10 +74,9 @@ window.createTaskHistory = options => {
     detailController?.abort();
     const controller = detailController = new AbortController();
     detailLoading = true;
-    const requestToken = authToken;
-    const isCurrent = () => selectedId === id && requestToken === authToken && detailController === controller && $('#detailModal').classList.contains('open');
+    const isCurrent = () => selectedId === id && detailController === controller && $('#detailModal').classList.contains('open');
     try {
-      const task = await read(`/api/tasks/${encodeURIComponent(id)}`, controller, requestToken);
+      const task = await read(`/api/tasks/${encodeURIComponent(id)}`, controller);
       if (!isCurrent()) return;
       const scroll = $('#modalBody').querySelector('.execution-timeline')?.scrollTop || 0;
       $('#modalBody').innerHTML = `${view.overview(task)}<h3 class="timeline-title">核心执行过程</h3>${view.timeline(task.events)}`;
@@ -98,25 +95,10 @@ window.createTaskHistory = options => {
   $('#refreshHistoryBtn').addEventListener('click', () => { load(); if (selectedId && $('#detailModal').classList.contains('open')) openDetail(selectedId, true); });
   $('#historyPrevBtn').addEventListener('click', () => { if (page > 1) { page--; load(); } });
   $('#historyNextBtn').addEventListener('click', () => { if (page * pageSize < total) { page++; load(); } });
-  function changeToken(value) {
-    if (value === authToken) return;
-    authToken = value; page = 1; total = 0; selectedId = null; ++generation;
-    listController?.abort(); detailController?.abort(); loading = false; detailLoading = false;
-    $('#refreshHistoryBtn').disabled = false;
-    $('#detailModal').classList.remove('open');
-    $('#modalBody').replaceChildren();
-    $('#historyScope').textContent = '等待鉴权';
-    $('#historyTable').innerHTML = '<p class="execution-empty">填写访问 Token 后，可查看服务端保存的任务日志。</p>';
-    $('#historyMessage').textContent = '任务日志保存在服务端，页面刷新后仍可查看。';
-    $('#historyPageInfo').textContent = '共 0 条';
-    $('#historyPrevBtn').disabled = true; $('#historyNextBtn').disabled = true;
-    if (authToken) load();
-  }
-  window.demoTokenStore.subscribe(changeToken);
-  changeToken(window.demoTokenStore.read());
+  load();
   window.addEventListener('task-log-updated', () => load());
   setInterval(() => {
-    if (!authToken || document.hidden || !$('#historyAutoRefresh').checked) return;
+    if (document.hidden || !$('#historyAutoRefresh').checked) return;
     if (!loading) load();
     if (selectedId && $('#detailModal').classList.contains('open')) openDetail(selectedId, true);
   }, 5000);

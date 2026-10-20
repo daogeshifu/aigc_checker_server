@@ -50,18 +50,18 @@
   </div></header>
 
   <main>
-    <section class="page-head"><div><span class="eyebrow"><i></i> EXECUTION OBSERVABILITY</span><h1>任务运行记录</h1><p>查看 Demo、测试页与第三方 API 的全部任务。记录包含模型路由、切词分块、特征计算、分数聚合和返回结果，但不会保存用户原文或 Prompt。</p></div><span class="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 5 6v5c0 4.8 2.7 8 7 10 4.3-2 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>内容级数据已脱敏</span></section>
+    <section class="page-head"><div><span class="eyebrow"><i></i> EXECUTION OBSERVABILITY</span><h1>任务运行记录</h1><p>按创建时间倒序查看服务端仍保留的全部任务。页面每 5 秒自动刷新，记录不保存用户原文或 Prompt。</p></div><span class="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 5 6v5c0 4.8 2.7 8 7 10 4.3-2 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>内容级数据已脱敏</span></section>
 
     <section class="access-card">
-      <div><label class="token-label" for="taskToken">管理 Token</label><div class="token-row"><div class="token-input"><input id="taskToken" type="password" autocomplete="off" placeholder="输入 Token，默认 aigcchecker"><button class="eye-btn" id="eyeBtn" type="button" aria-label="显示或隐藏 Token"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button></div><button class="load-btn" id="loadBtn" type="button">读取任务</button><button class="refresh-btn" id="refreshBtn" type="button">刷新</button></div></div>
-      <div class="access-note">默认管理 Token 可查看全部来源；<br>普通套餐 Token 只能查看自己的任务。</div>
+      <div><button class="refresh-btn" id="refreshBtn" type="button">刷新任务</button></div>
+      <div class="access-note" id="scopeNote">全部调用方 · 无需 Token · 每 5 秒刷新</div>
     </section>
 
     <section class="stats"><div class="stat"><span>记录总数</span><strong id="totalCount">—</strong><small>当前保留范围</small></div><div class="stat"><span>成功任务</span><strong id="successCount">—</strong><small id="successRate">成功率 —</small></div><div class="stat"><span>第三方 API</span><strong id="apiCount">—</strong><small>request_source = api</small></div><div class="stat"><span>平均耗时</span><strong id="avgDuration">—</strong><small>已完成任务</small></div></section>
 
     <section class="list-card">
-      <div class="list-toolbar"><div class="filters"><input class="filter-input" id="searchInput" placeholder="搜索 Task ID"><select class="filter-select" id="sourceFilter"><option value="all">全部来源</option><option value="demo">Demo</option><option value="test">测试页</option><option value="api">第三方 API</option></select><select class="filter-select" id="typeFilter"><option value="all">全部类型</option><option value="scan">AI 检测</option><option value="reduce">降 AI 改写</option></select><select class="filter-select" id="statusFilter"><option value="all">全部状态</option><option value="success">成功</option><option value="running">执行中</option><option value="failed">失败</option></select></div><span class="list-meta" id="listMeta">输入 Token 后读取记录</span></div>
-      <div class="table-wrap" id="tableWrap"><div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></div>输入管理 Token，读取全部任务记录。</div></div>
+      <div class="list-toolbar"><div class="filters"><input class="filter-input" id="searchInput" placeholder="搜索 Task ID"><select class="filter-select" id="sourceFilter"><option value="all">全部来源</option><option value="demo">Demo</option><option value="test">测试页</option><option value="api">第三方 API</option></select><select class="filter-select" id="typeFilter"><option value="all">全部类型</option><option value="scan">AI 检测</option><option value="reduce">降 AI 改写</option></select><select class="filter-select" id="statusFilter"><option value="all">全部状态</option><option value="success">成功</option><option value="running">执行中</option><option value="failed">失败</option></select></div><span class="list-meta" id="listMeta">正在读取记录</span></div>
+      <div class="table-wrap" id="tableWrap"><div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></div>正在读取全部任务记录…</div></div>
       <div class="pager" id="pager" hidden><button id="prevBtn" type="button">上一页</button><span id="pageInfo"></span><button id="nextBtn" type="button">下一页</button></div>
     </section>
   </main>
@@ -70,9 +70,8 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const state={tasks:[],filtered:[],page:1,pageSize:20,loading:false};
+    const state={tasks:[],filtered:[],page:1,pageSize:20,loading:false,detailGeneration:0};
     const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];
-    const token=()=>$('#taskToken').value.trim();
     const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     const fmtDuration=ms=>ms==null?'进行中':ms<1000?`${ms} ms`:`${(ms/1000).toFixed(ms<10000?1:0)} s`;
     const fmtTime=iso=>iso?new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(iso)):'—';
@@ -80,8 +79,36 @@
     const detailLabels={source:'来源',plan:'套餐',chars:'字符数',input_chars:'输入字符',chars_before:'清洗前',chars_after:'清洗后',max_chars:'上限',scan_phase:'检测阶段',requested_api_source:'请求来源',requested_model:'请求模型',scan_source:'实际引擎',scan_model:'判别模型',language:'语言',genre:'文体',token_count:'词元数',sentence_count:'句子数',chunks:'分块数',parallelism:'并发块数',concurrency_limit:'并发上限',strategy:'分块策略',target_chars:'目标块长',min_chars:'最小块长',chunk_id:'分块',chunk_language:'分块语言',burstiness:'句长波动',lexical_diversity:'词汇多样性',repeated_ngram_ratio:'重复率',route:'路由',reason:'原因',provider:'服务商',model:'模型',model_called:'调用模型',raw_ai_score:'模型原始分',raw_confidence:'模型置信度',label:'标签',judge_mode:'判别方式',qwen_score:'Qwen 分',feature_score:'特征分',style_score:'风格分',final_score:'最终分',confidence:'置信度',method:'聚合方法',trigger:'触发复核',review_score:'复核分',review_confidence:'复核置信度',ai_probability:'AI 风格风险分',ai_reduced_probability:'改写后风险分',rewrite:'发生改写',quality_score:'质量分',quality:'质量分',before:'改写前',after:'改写后',improvement:'下降幅度',applied:'已生效',stage:'步骤',target_model:'目标模型',steps:'流水线',reduced_chars:'改写字符数',error_type:'错误类型',fallback:'回退方式'};
     const valueLabels={primary_scan:'主检测',original_scan:'原文检测',reduced_scan:'改写后复检',sentence_spans:'按句子边界',statistics_only:'统计特征计算',ollama_qwen:'Ollama Qwen',short_or_single_sentence:'短文本或单句',structured_chunk:'结构化分块',short_chunk:'短分块',detail_heavy_formal:'细节密集的正式文本',qwen_provider_error:'Qwen 服务异常',plan_disabled:'当前套餐不启用',review_disabled:'全局复核已关闭',not_needed:'本地结果已足够明确',low_confidence:'本地置信度较低',borderline_score:'分数处于边界区间',conservative_genre:'正式文体保守复核',character_weighted_average:'按分块字符数加权',semantic_rewrite:'深度语义重写',expression_perturb:'表达扰动',rule_injection:'规则注入'};
     function toast(message,type=''){const n=$('#toast');n.textContent=message;n.className=`toast ${type} show`;clearTimeout(toast.timer);toast.timer=setTimeout(()=>n.className='toast',2600)}
-    async function apiFetch(url){const r=await fetch(url,{headers:{Authorization:`Bearer ${token()}`}});let data;try{data=await r.json()}catch{data={detail:`服务返回非 JSON 响应（HTTP ${r.status}）`}}if(!r.ok)throw new Error(data.detail||`请求失败（HTTP ${r.status}）`);return data}
-    async function loadTasks(silent=false){if(!token()){toast('请先输入管理 Token','error');return}if(state.loading)return;state.loading=true;$('#loadBtn').disabled=true;if(!silent)$('#tableWrap').innerHTML='<div class="empty">正在读取任务记录…</div>';try{const data=await apiFetch('/api/tasks?limit=200');state.tasks=data.items||[];state.page=1;applyFilters();renderStats();sessionStorage.setItem('aigc_demo_token',token());if(!silent)toast(`已读取 ${state.tasks.length} 条任务`)}catch(e){if(!silent)$('#tableWrap').innerHTML=`<div class="empty">${esc(e.message)}<br>请检查 Token 是否正确。</div>`;toast(e.message,'error')}finally{state.loading=false;$('#loadBtn').disabled=false}}
+    async function apiFetch(url,signal){const r=await fetch(url,{cache:'no-store',signal});let data;try{data=await r.json()}catch{data={detail:`服务返回非 JSON 响应（HTTP ${r.status}）`}}if(!r.ok)throw new Error(data.detail||`请求失败（HTTP ${r.status}）`);return data}
+    async function loadTasks(silent=false){
+      if(state.loading)return;
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),15000);
+      state.loading=true;$('#refreshBtn').disabled=true;
+      if(!silent)$('#tableWrap').innerHTML='<div class="empty">正在读取任务记录…</div>';
+      try{
+        const tasks=new Map();let offset=0,data;
+        do{
+          data=await apiFetch(`/api/tasks?limit=200&offset=${offset}`,controller.signal);
+          const items=data.items||[];
+          items.forEach(task=>tasks.set(task.task_id,task));
+          offset+=items.length;
+          if(!items.length)break;
+        }while(offset>0&&offset<data.total);
+        state.tasks=[...tasks.values()];
+        if(!silent)state.page=1;
+        applyFilters();renderStats();
+        $('#scopeNote').textContent=`全部调用方 · 无需 Token · 服务端最多保留 ${data.retention_limit??200} 条 · 每 5 秒刷新`;
+        if(!silent)toast(`已读取 ${state.tasks.length} 条任务`);
+      }catch(e){
+        const message=controller.signal.aborted?'任务读取超时，请刷新重试':e.message;
+        if(!silent)$('#tableWrap').innerHTML=`<div class="empty">${esc(message)}<br>请稍后重试。</div>`;
+        toast(message,'error');
+      }finally{
+        clearTimeout(timeout);
+        state.loading=false;$('#refreshBtn').disabled=false;
+      }
+    }
     function applyFilters(){const query=$('#searchInput').value.trim().toLowerCase(),source=$('#sourceFilter').value,type=$('#typeFilter').value,status=$('#statusFilter').value;state.filtered=state.tasks.filter(t=>(!query||t.task_id.toLowerCase().includes(query))&&(source==='all'||t.source===source)&&(type==='all'||t.task_type===type)&&(status==='all'||t.status===status));const maxPage=Math.max(1,Math.ceil(state.filtered.length/state.pageSize));state.page=Math.min(state.page,maxPage);renderTable()}
     function renderStats(){const done=state.tasks.filter(t=>t.duration_ms!=null),success=state.tasks.filter(t=>t.status==='success').length,api=state.tasks.filter(t=>t.source==='api').length,avg=done.length?Math.round(done.reduce((s,t)=>s+t.duration_ms,0)/done.length):null;$('#totalCount').textContent=state.tasks.length;$('#successCount').textContent=success;$('#successRate').textContent=`成功率 ${state.tasks.length?Math.round(success/state.tasks.length*100):0}%`;$('#apiCount').textContent=api;$('#avgDuration').textContent=avg==null?'—':fmtDuration(avg)}
     function resultText(task){const r=task.result||{};if(task.status==='failed')return task.error_code||'执行失败';if(task.status==='running')return '计算中';if(task.task_type==='reduce')return r.ai_reduced_probability!=null?`${r.ai_probability} → ${r.ai_reduced_probability} 分`:'已完成';return r.ai_probability!=null?`风险 ${r.ai_probability} 分`:(r.label||'已完成')}
@@ -90,7 +117,7 @@
     const callStateLabels={success:'调用成功',failed:'调用失败',partial:'部分成功',unknown:'状态未知',not_called:'未调用'};
     function normalizedCallState(engine){if(engine.status)return engine.status;const attempts=Number(engine.attempts??engine.calls??0),successes=Number(engine.successes||0),failures=Number(engine.failures||0);if(!attempts)return'not_called';if(successes&&failures)return'partial';if(successes>=attempts)return'success';if(failures>=attempts)return'failed';return'unknown'}
     function callMetrics(engine){const attempts=Number(engine.attempts??engine.calls??0),successes=Number(engine.successes||0),failures=Number(engine.failures||0);return `<div class="call-metrics"><span>尝试 ${attempts}</span><span class="ok">成功 ${successes}</span><span class="bad">失败 ${failures}</span></div>`}
-    async function openDetail(id){$('#detailModal').classList.add('open');$('#modalTaskId').textContent=id;$('#modalBody').innerHTML='<div class="empty">正在读取执行轨迹…</div>';try{renderDetail(await apiFetch(`/api/tasks/${encodeURIComponent(id)}`))}catch(e){$('#modalBody').innerHTML=`<div class="empty">${esc(e.message)}</div>`}}
+    async function openDetail(id){const generation=++state.detailGeneration;$('#detailModal').classList.add('open');$('#modalTaskId').textContent=id;$('#modalBody').innerHTML='<div class="empty">正在读取执行轨迹…</div>';const isCurrent=()=>generation===state.detailGeneration&&$('#modalTaskId').textContent===id;try{const task=await apiFetch(`/api/tasks/${encodeURIComponent(id)}`);if(isCurrent())renderDetail(task)}catch(e){if(isCurrent())$('#modalBody').innerHTML=`<div class="empty">${esc(e.message)}</div>`}}
     function renderDetail(task){
       const events=task.events||[],execution=task.execution_summary||{},local=execution.local||{},thirdParty=execution.third_party||[];
       const overview=[['页面来源',task.source==='demo'?'快速体验':task.source==='test'?'接口测试':'第三方 API'],['任务类型',task.task_type==='reduce'?'降 AI 改写':'AI 检测'],['状态',task.status==='success'?'成功':task.status==='failed'?'失败':'执行中'],['输入规模',`${Number(task.char_count||0).toLocaleString()} 字符`],['总耗时',fmtDuration(task.duration_ms)]];
@@ -109,8 +136,19 @@
       const eventHtml=events.map((e,index)=>{const chips=Object.entries(e.details||{}).filter(([,v])=>v!==null&&v!==''&&v!=='none').map(([k,v])=>{const shown=valueLabels[String(v)]||(typeof v==='boolean'?(v?'是':'否'):v);return `<span class="detail-chip">${esc(detailLabels[k]||k)} · ${esc(shown)}</span>`}).join('');const stepNumber=String(e.sequence||index+1).padStart(2,'0');return `<div class="event ${esc(e.status)}"><span class="event-index">${stepNumber}</span><div class="event-title-row"><span class="event-title">${esc(eventLabels[e.step]||e.step)}</span><span class="event-time">+${fmtDuration(e.elapsed_ms)}</span></div><div class="event-code">${esc(e.step)}</div>${chips?`<div class="event-details">${chips}</div>`:''}</div>`}).join('');
       $('#modalBody').innerHTML=`<div class="overview">${overviewHtml}</div>${engineHtml}${modeHtml}<div class="route-box"><span>实际执行路径</span><div class="route-chips">${routeHtml}</div></div><h3 class="timeline-title">完整执行步骤 · ${events.length} 条</h3><div>${eventHtml||'<div class="empty">暂无执行步骤</div>'}</div>`;
     }
-    function closeModal(){$('#detailModal').classList.remove('open')}
-    window.addEventListener('DOMContentLoaded',()=>{$('#taskToken').value=sessionStorage.getItem('aigc_demo_token')||'';if(token())loadTasks(true);$('#eyeBtn').addEventListener('click',()=>$('#taskToken').type=$('#taskToken').type==='password'?'text':'password');$('#taskToken').addEventListener('keydown',e=>{if(e.key==='Enter')loadTasks()});$('#loadBtn').addEventListener('click',()=>loadTasks());$('#refreshBtn').addEventListener('click',()=>loadTasks());[$('#searchInput'),$('#sourceFilter'),$('#typeFilter'),$('#statusFilter')].forEach(n=>n.addEventListener(n.tagName==='INPUT'?'input':'change',()=>{state.page=1;applyFilters()}));$('#prevBtn').addEventListener('click',()=>{state.page--;renderTable()});$('#nextBtn').addEventListener('click',()=>{state.page++;renderTable()});$('#closeModalBtn').addEventListener('click',closeModal);$('#detailModal').addEventListener('click',e=>{if(e.target===$('#detailModal'))closeModal()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});setInterval(()=>{if(state.tasks.some(t=>t.status==='running'))loadTasks(true)},5000)});
+    function closeModal(){++state.detailGeneration;$('#detailModal').classList.remove('open')}
+    window.addEventListener('DOMContentLoaded',()=>{
+      loadTasks();
+      $('#refreshBtn').addEventListener('click',()=>loadTasks());
+      [$('#searchInput'),$('#sourceFilter'),$('#typeFilter'),$('#statusFilter')].forEach(n=>n.addEventListener(n.tagName==='INPUT'?'input':'change',()=>{state.page=1;applyFilters()}));
+      $('#prevBtn').addEventListener('click',()=>{state.page--;renderTable()});
+      $('#nextBtn').addEventListener('click',()=>{state.page++;renderTable()});
+      $('#closeModalBtn').addEventListener('click',closeModal);
+      $('#detailModal').addEventListener('click',e=>{if(e.target===$('#detailModal'))closeModal()});
+      document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+      window.addEventListener('focus',()=>loadTasks(true));
+      setInterval(()=>{if(!document.hidden)loadTasks(true)},5000);
+    });
   </script>
 </body>
 </html>

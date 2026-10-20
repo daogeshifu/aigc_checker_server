@@ -39,6 +39,11 @@ class OpenApiTests(unittest.TestCase):
             self.assertIn('X-Task-ID', operation['responses']['500']['headers'])
         self.assertIn('403', schema['paths']['/api/reduce']['post']['responses'])
         self.assertIn('404', schema['paths']['/api/tasks/{task_id}']['get']['responses'])
+        for path in ['/api/tasks', '/api/tasks/{task_id}']:
+            self.assertNotIn('security', schema['paths'][path]['get'])
+            self.assertNotIn('401', schema['paths'][path]['get']['responses'])
+        for path in ['/api/scan', '/api/reduce']:
+            self.assertTrue(schema['paths'][path]['post']['security'])
         progress = schema['components']['schemas']['TaskProgressResult']
         self.assertTrue({'stage', 'progress', 'message', 'scan_phase', 'completed_chunks', 'total_chunks'}
                         <= set(progress['required']))

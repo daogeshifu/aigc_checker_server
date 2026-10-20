@@ -354,10 +354,10 @@ curl -X POST "http://127.0.0.1:8027/api/scan" \
 
 ### 任务记录接口
 
-- `GET /api/tasks`：分页查询当前 Token 可见的任务摘要；支持 `limit/offset`、来源/类型/状态/Task ID 筛选，返回 `items/total/can_view_all_tasks/retention_limit`
+- `GET /api/tasks`：无需 Token，按创建时间倒序分页查询全部保留任务摘要；支持 `limit/offset`、来源/类型/状态/Task ID 筛选，返回 `items/total/can_view_all_tasks/retention_limit`
 - `GET /api/tasks/{task_id}`：轮询单个任务的阶段、业务结果摘要和完整执行步骤
 
-`API_TOKEN` 作为管理 Token，可查看 Demo、测试页与第三方 API 的全部任务；`FREE_API_TOKENS` 和 `PRO_API_TOKENS` 仍按 Token 隔离，只能查看自己的记录。任务日志只保存步骤、模型、分块数量、统计分数、状态和耗时等运行元数据。`content`、`text`、`prompt`、改写前后文本等字段会被强制脱敏。
+`/tasks` 页面及两个任务查询接口无需 Token，可查看 Demo、测试页与第三方 API 的全部保留任务；`can_view_all_tasks` 兼容保留并返回 `true`。检测、改写接口继续校验业务 Token。任务日志只保存步骤、模型、分块数量、统计分数、状态和耗时等运行元数据。`content`、`text`、`prompt`、改写前后文本等字段会被强制脱敏。
 
 Demo 和接口测试页面底部展示核心步骤、返回结果、返回时间与耗时，执行中每两秒更新。「全部任务日志」覆盖 Demo、测试页和外部 API 任务，支持分页筛选、每五秒刷新和执行过程查看。服务端默认保留最近 200 条，由 `TASK_LOG_MAX_RECORDS` 配置。任务摘要/详情的 `returned_at` 表示服务端完成并准备返回的时间，执行中为 `null`。[使用与更新部署说明](docs/DEMO_EXECUTION_LOGS.md)。
 

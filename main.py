@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="AIGC Checker Engine", version="2.1.0", description=api_description(), lifespan=lifespan,
               openapi_tags=[{"name": "检测", "description": "文本风险分、原文实测指标与 Azure 条件复核。"},
                             {"name": "改写", "description": "Pro 改写、前后复检与回滚保护。"},
-                            {"name": "任务日志", "description": "按访问 Token 隔离的脱敏任务记录与执行进度。"}])
+                            {"name": "任务日志", "description": "无需 Token 查询全部保留任务的脱敏记录与执行进度。"}])
 app.include_router(detect_router, prefix="/api")
 
 _DEMO_PAGE = Path(__file__).with_name("web") / "demo.html"

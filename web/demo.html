@@ -418,7 +418,7 @@
   <section class="execution-section" aria-labelledby="historyTitle">
     <div class="execution-head">
       <div><h2 id="historyTitle"><span class="step-number">04</span>全部任务日志</h2><p>查看 Demo、测试页及外部 API 创建的检测与改写任务，点击「查看过程」跟踪核心执行日志。</p></div>
-      <div class="execution-actions"><span class="execution-badge" id="historyScope">等待鉴权</span><button class="small-btn" id="refreshHistoryBtn" type="button">刷新全部日志</button></div>
+      <div class="execution-actions"><span class="execution-badge" id="historyScope">全部调用方 · 无需 Token</span><button class="small-btn" id="refreshHistoryBtn" type="button">刷新全部日志</button></div>
     </div>
     <div class="history-toolbar">
       <input id="historySearch" type="search" placeholder="搜索 Task ID" aria-label="搜索任务 ID" maxlength="100">
@@ -428,7 +428,7 @@
       <label><input id="historyAutoRefresh" type="checkbox" checked>每 5 秒自动刷新</label>
     </div>
     <p class="history-message" id="historyMessage" role="status">任务日志保存在服务端，页面刷新后仍可查看。</p>
-    <div class="execution-table history-table" id="historyTable"><p class="execution-empty">填写访问 Token 后，可查看服务端保存的任务日志。</p></div>
+    <div class="execution-table history-table" id="historyTable"><p class="execution-empty">正在读取服务端保存的全部任务日志…</p></div>
     <div class="history-pager"><span id="historyPageInfo">共 0 条</span><button id="historyPrevBtn" class="small-btn" type="button" disabled>上一页</button><button id="historyNextBtn" class="small-btn" type="button" disabled>下一页</button></div>
   </section>
 
