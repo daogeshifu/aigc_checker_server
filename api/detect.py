@@ -106,7 +106,7 @@ def api_description() -> str:
 
 ### 分数与测量值
 - risk_score 为 0～100 的未校准 AI 风格风险分。ai_probability 是相同分数的历史字符串字段，**不是 AI 来源概率或 AI 内容占比**。
-- 分块通常采用 70% Qwen 判断 + 30% 文本统计，再做文体/短文本修正，全文按分块长度加权。
+- 分块默认采用 70% Qwen 判断和 30% 文本统计，再做文体及短文本修正。全文按实际检测的非空白字符数加权，实际模型权重见 engine.qwen_score_weight。
 - 短文本/列表可能跳过模型；模型失败后统计回退。HTTP 200 不保证模型成功，检查 judge_mode、warnings 和任务轨迹。
 - 独立评分服务计算原文 NLL/PPL；disabled/unavailable 时为 null，当前不参与风险分。Burstiness 是句长波动统计；**Binoculars 尚未实现**。
 - Pro 条件复核只调用 Azure；OpenRouter 仅保留在语义改写兜底链路。

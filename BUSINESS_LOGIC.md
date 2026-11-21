@@ -58,7 +58,7 @@
 | `services/preprocess.py` | 文本清洗、句子切分、语言识别、文体识别、分块 |
 | `services/features.py` | 真实统计特征提取（句长、词汇多样性、n-gram 等） |
 | `services/judges.py` | 本地 Qwen 风格判别，含跳过策略和启发式兜底 |
-| `services/aggregate.py` | chunk 三路评分融合、文档级聚合、置信度计算 |
+| `services/aggregate.py` | Qwen 与统计评分融合、文档级聚合、置信度计算 |
 | `services/calibration.py` | 校准层，当前为 identity（预留） |
 | `services/ollama_client.py` | Ollama `/api/generate` 调用（JSON 模式 / 文本模式） |
 | `services/prompts.py` | 判别/改写/复核各环节 Prompt |
@@ -106,12 +106,12 @@
 3. detect_language：zh / en / mixed
 4. detect_genre：文体识别（影响后续评分保守程度）
 5. extract_document_features：文档级特征
-6. chunk_text：按句子分块（目标 320 字/块，最小 180 字）
+6. chunk_text 按自然段组合检测块，目标为每块 900 个字符
 7. 逐 chunk：
    a. chunk 级语言识别（仅文档为 mixed 时逐块判断）
    b. extract_chunk_features
    c. judge_chunk_with_qwen（可能跳过 LLM 走启发式）
-   d. score_chunk：三路评分融合 + 规则修正
+   d. score_chunk：融合 Qwen 判断与统计分，应用文体和短文修正
 8. aggregate_document：文档级聚合
 9. _should_trigger_remote_review：判断是否触发 Pro 远端二审，必要时融合结果
 10. _trim_result_by_plan：补充 plan / review 元数据后返回
@@ -139,9 +139,9 @@
 
 ### 4.4 分块策略（`preprocess.py::chunk_text`）
 
-- 按句末标点/双换行切句，短段（中文<20字 且 英文<15词 且 紧凑<35）自动并入相邻段
-- 累积句子直到接近 target_size(320) 输出一块；末块 < min_size(180) 时并入上一块
-- 重新编号保证 chunk_id 连续
+- 分块和统计共用自然段边界。一个换行和段间空一行得到相同的块边界和模型输入。相邻短段和对话可以合并，目标为 900 个字符，软下限为 450 个字符。
+- 每块最多 1,200 个字符。超过上限的自然段优先在句尾切开，其次按词边界切分，连续无空格文本按字符切分。
+- 每个检测块独立评分，返回连续的 `chunk_id` 和原文位置。句子统计仍以单句为单位。
 
 ### 4.5 分块判别（`judges.py::judge_chunk_with_qwen`）
 
@@ -161,11 +161,11 @@
 ### 4.6 chunk 评分（`aggregate.py::score_chunk`）
 
 ```text
-final_chunk_score = 0.70 * qwen_score   (LLM 判别分)
-                  + 0.30 * feature_score (统计特征分)
+final_chunk_score = QWEN_SCORE_WEIGHT * qwen_score
+                  + (1 - QWEN_SCORE_WEIGHT) * feature_score
 ```
 
-模型跳过或失败时仅使用 feature_score；style_score 仅作解释，不重复参与融合。这些权重尚未用标注数据拟合。
+默认 Qwen 权重为 0.70。中英文标注样本的对比和重跑命令见 README 的“2.3 分段和融合权重评测”。模型跳过或失败时使用 feature_score。style_score 用于解释模型判断。
 
 随后规则修正：
 
@@ -185,7 +185,7 @@ confidence = qwen_confidence * scale
 
 ### 4.7 文档聚合（`aggregate.py::aggregate_document`）
 
-- `ai_probability`：各 chunk `ai_score` **按字符数加权平均**
+- `ai_probability` 为各块 `ai_score` 按实际检测的非空白字符数加权的平均值。
 - 文体与短文本评分修正仅在分块执行一次，不在文档重复扣分
 - `confidence`：按字符权重聚合 chunk 置信度 → `≥0.72 high / ≥0.45 medium / 其余 low`；大量统计回退、检测分歧或极短文档保持低置信度
 - `label`：`≥70 AI Generated / ≥40 Mixed / 其余 Human Written`

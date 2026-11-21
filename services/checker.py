@@ -14,14 +14,17 @@ try:
 except ImportError:  # pragma: no cover - fallback for minimal local env
     httpx = None
 
-from services.aggregate import aggregate_document, score_chunk
+from services.aggregate import QWEN_SCORE_WEIGHT, aggregate_document, score_chunk
 from services.concurrency import bounded_concurrency
 from services.azure_client import create_azure_client, request_options as azure_request_options
 from services.features import extract_chunk_features, extract_document_features
 from services.judges import judge_chunk_with_qwen
 from services.ollama_client import OLLAMA_DEFAULT_MODEL
 from services.model_client import DETECTION_PROVIDER, default_model, rewrite_model, generate_text, request_concurrency_limit
-from services.preprocess import chunk_text, clean_text, detect_genre, detect_language
+from services.preprocess import (
+    CHUNK_MAX_CHARS, CHUNK_MIN_CHARS, CHUNK_TARGET_CHARS, chunk_text, clean_text, detect_genre, detect_language,
+    judgment_text,
+)
 from services.probability_client import measure_probability
 from services.prompts import (
     REDUCE_PERTURB_SYSTEM_PROMPT,
@@ -42,6 +45,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+ENGINE_VERSION = "2.3.0"
 API_SOURCE = os.getenv("API_SOURCE", DETECTION_PROVIDER).lower()
 SUPPORTED_API_SOURCES = {"ollama", "bailian", "azure", "openrouter"}
 SCAN_API_SOURCE = DETECTION_PROVIDER
@@ -571,7 +575,7 @@ def _build_remote_review_prompt(content: str, detection_result: dict) -> str:
         seen = set()
         for chunk in candidates:
             if chunk["chunk_id"] not in seen:
-                selected.append({"chunk_id": chunk["chunk_id"], "text": chunk["text"]})
+                selected.append({"chunk_id": chunk["chunk_id"], "text": judgment_text(chunk["text"])})
                 seen.add(chunk["chunk_id"])
             if len(selected) == 4:
                 break
@@ -579,7 +583,7 @@ def _build_remote_review_prompt(content: str, detection_result: dict) -> str:
     return json.dumps({
         "genre": detection_result.get("analysis", {}).get("genre"),
         "representative_chunks": selected,
-        "content": content,
+        "content": judgment_text(content),
     }, ensure_ascii=False)
 
 
@@ -1000,9 +1004,10 @@ async def run_check(
         task_id,
         "scan.chunking.finish",
         scan_phase=scan_phase,
-        strategy="sentence_spans",
-        target_chars=320,
-        min_chars=180,
+        strategy="paragraph_spans",
+        target_chars=CHUNK_TARGET_CHARS,
+        min_chars=CHUNK_MIN_CHARS,
+        max_chars=CHUNK_MAX_CHARS,
         chunks=len(chunks),
         parallelism=parallelism,
         concurrency_limit=concurrency_limit,
@@ -1034,7 +1039,6 @@ async def run_check(
             task_id=task_id,
             chunk_id=chunk["chunk_id"],
         )
-        # Fuse independent text judgment (70%) and statistics (30%).
         scored = score_chunk(features, qwen_result, genre)
         _log_task(
             task_id,
@@ -1103,12 +1107,13 @@ async def run_check(
     )
     result["engine"] = {
         "checker": f"hybrid-{SCAN_API_SOURCE}",
-        "version": "2.1.0",
+        "version": ENGINE_VERSION,
         "score_semantics": "uncalibrated_risk_score",
         "requested_api_source": requested_api_source,
         "requested_model": model,
         "scan_api_source": SCAN_API_SOURCE,
         "qwen_model": effective_scan_model,
+        "qwen_score_weight": QWEN_SCORE_WEIGHT,
     }
 
     # Step 4: 判断是否需要触发 Pro 远端二审，并在结果中记录二审元数据

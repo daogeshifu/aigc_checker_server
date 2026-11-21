@@ -36,6 +36,7 @@ class DetectionMetrics(DocumentedResponse):
 class ChunkBreakdown(DocumentedResponse):
     feature_score: float = Field(description="统计特征分，0～100。")
     qwen_score: float = Field(description="Qwen 原始分；heuristic 模式下为兼容字段，不代表实际调用模型。是否调用以 judge_mode 为准。")
+    qwen_confidence: float | None = Field(default=None, ge=0, le=1, description="有效模型判断的原始置信度，供离线比较权重。")
     style_score: float | None = Field(description="模型风格信号的解释性汇总；回退时 null。")
     style_used_in_score: Literal[False]
 
@@ -60,6 +61,16 @@ class DetectionChunk(DocumentedResponse):
     binoculars_score: None
 
 
+class DetectionSegment(DocumentedResponse):
+    chunk_id: int = Field(description="与本次请求中对应的 chunks 条目共享编号。")
+    granularity: Literal["chunk"]
+    text: str = Field(description="这个检测块覆盖的完整原文，可跨多个自然段。")
+    ai_probability: int = Field(ge=0, le=100, description="分块 ai_score 取整后的展示分。")
+    confidence_level: Literal["low", "medium", "high"]
+    judge_mode: Literal["qwen", "heuristic_skip", "heuristic_fallback"]
+    level: int = Field(ge=1, le=10)
+
+
 class AzureReview(DocumentedResponse):
     enabled: bool
     used: bool = Field(description="仅在 Azure 返回有效复核结果并成功融合后为 true。")
@@ -80,6 +91,7 @@ class DetectionEngine(DocumentedResponse):
     requested_model: str | None
     scan_api_source: Literal["ollama", "bailian"] = Field(description="实际检测提供方，由服务器 DETECTION_PROVIDER 决定。")
     qwen_model: str = Field(description="实际使用的 Qwen 模型名；兼容字段名，百炼模式也使用此字段。")
+    qwen_score_weight: float = Field(ge=0, le=1, description="模型参与判断时采用的融合权重。")
 
 
 class ScanResponse(DocumentedResponse):
@@ -103,8 +115,8 @@ class ScanResponse(DocumentedResponse):
     review: AzureReview
     engine: DetectionEngine
     summary: dict[str, Any] = Field(description="confidence_label、percentages 等；ai/mixed/human 百分比仅为启发式展示权重，不是原文内容比例。")
-    segments: list[dict[str, Any]] = Field(description="按分块粒度展示的文本及风险分。")
-    sentences: list[dict[str, Any]] = Field(deprecated=True, description="segments 的历史别名，实际粒度仍是分块，不是逐句检测。")
+    segments: list[DetectionSegment] = Field(description="每个独立评分的检测块对应一条记录。")
+    sentences: list[DetectionSegment] = Field(deprecated=True, description="segments 的历史别名。")
     granularity: Literal["chunk"]
     vocab: dict[str, Any] = Field(description="重复词/短语展示，不代表作者身份的证据。")
 

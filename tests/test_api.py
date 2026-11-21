@@ -1,4 +1,5 @@
 """HTTP contract tests use temporary task storage and mocked model responses."""
+import json
 import tempfile
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -50,6 +51,24 @@ class ApiTests(unittest.TestCase):
                 task = client.get('/api/tasks/' + result['task_id'])
                 self.assertEqual(task.status_code, 200)
         self.assertIsNone(ollama_client._http_client)
+
+    def test_scan_judges_each_whole_passage_once_and_returns_matching_spans(self):
+        first = TEXT.strip() + '\n"Ready?"\n"Ready."'
+        second = (TEXT * 2).strip()
+        text = first + '\n\n' + second
+        with patch('services.judges.generate_json', new_callable=AsyncMock, return_value=REPLY) as judge:
+            with TestClient(app) as client:
+                response = client.post('/api/scan', json={'content': text})
+        self.assertEqual(response.status_code, 200, response.text)
+        measured = [json.loads(call.kwargs['user_prompt'])['text_to_analyze'] for call in judge.await_args_list]
+        self.assertCountEqual(measured, [first, second])
+        result = response.json()
+        self.assertEqual(result['segments'], result['sentences'])
+        self.assertEqual([s['text'] for s in result['segments']], [first, second])
+        for chunk, segment in zip(result['chunks'], result['segments'], strict=True):
+            self.assertEqual(text[chunk['start']:chunk['end']], segment['text'])
+            self.assertEqual(segment['chunk_id'], chunk['chunk_id'])
+            self.assertEqual(segment['ai_probability'], round(chunk['ai_score']))
 
     def test_provider_failure_returns_explicit_insufficient_evidence(self):
         with patch('services.judges.generate_json', AsyncMock(side_effect=RuntimeError('unavailable'))):

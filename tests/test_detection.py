@@ -11,7 +11,7 @@ from services import checker, ollama_client
 from services.aggregate import _feature_score, aggregate_document, score_chunk
 from services.features import extract_document_features, _detail_signal_count, _count_connectors
 from services.judges import _heuristic_fallback, _normalize_qwen_result, _should_skip_qwen, judge_chunk_with_qwen
-from services.preprocess import chunk_text, clean_text, split_sentences
+from services.preprocess import CHUNK_MAX_CHARS, chunk_text, clean_text, judgment_text, split_sentences
 from scripts.evaluate_detection import evaluate
 
 SAMPLE = 'The garden was quiet after the rain. Birds returned to the trees. People walked along the river and watched the clouds.'
@@ -27,6 +27,17 @@ def document(text=SAMPLE * 4, judge=None, genre='general'):
 
 
 class PreprocessTests(unittest.TestCase):
+    def test_formatting_one_or_two_newlines_keeps_boundaries_features_and_judge_text(self):
+        parts = ["Horizontal Projectile Motion Analysis", SAMPLE, "Acceleration was measured.", SAMPLE]
+        def analyze(separator):
+            text = separator.join(parts)
+            return [(judgment_text(c['text']), extract_document_features(c['text']))
+                    for c in chunk_text(text, target_size=158, min_size=80, max_size=220)]
+        self.assertEqual(analyze('\n'), analyze('\n\n'))
+        single = extract_document_features('\n'.join(parts))
+        self.assertEqual(single, extract_document_features('\r\n\r\n'.join(parts)))
+        self.assertEqual(single['paragraph_count'], 4)
+        self.assertEqual(extract_document_features("A soft\u2028line\u2029Next paragraph")['paragraph_count'], 2)
     def test_english_sentence_statistics(self):
         f = extract_document_features(SAMPLE)
         self.assertEqual(f['sentence_count'], 3)
@@ -47,12 +58,31 @@ class PreprocessTests(unittest.TestCase):
             previous_end = 0
             for index, chunk in enumerate(chunks):
                 self.assertEqual(chunk['chunk_id'], index)
-                self.assertLessEqual(len(chunk['text']), 480)
+                self.assertLessEqual(len(chunk['text']), CHUNK_MAX_CHARS)
                 self.assertEqual(chunk['text'], cleaned[chunk['start']:chunk['end']])
                 self.assertFalse(cleaned[previous_end:chunk['start']].strip())
                 previous_end = chunk['end']
             self.assertFalse(cleaned[previous_end:].strip())
             self.assertEqual(re.sub(r'\s', '', ''.join(c['text'] for c in chunks)), re.sub(r'\s', '', cleaned))
+
+    def test_groups_dialogue_without_cutting_the_next_paragraph(self):
+        dialogue = '"Where are we going?"\n\n"To the station," replied the driver.'
+        paragraph = (SAMPLE + ' ') * 5
+        long_paragraph = (SAMPLE + ' ') * 9
+        text = dialogue + '\n' + paragraph.strip() + '\n\n' + long_paragraph.strip()
+        self.assertEqual([c['text'] for c in chunk_text(text)],
+                         [dialogue + '\n' + paragraph.strip(), long_paragraph.strip()])
+
+    def test_oversized_paragraph_prefers_complete_sentences_and_leaves_context_for_the_tail(self):
+        sentences = ['文' * 399 + '。', '字' * 399 + '。', '语' * 399 + '。', '结' * 30 + '。']
+        chunks = chunk_text(''.join(sentences))
+        self.assertEqual([c['text'] for c in chunks], [sentences[0] + sentences[1], sentences[2] + sentences[3]])
+        for text in ['字' * (CHUNK_MAX_CHARS + 1), ('word ' * 241).strip()]:
+            chunks = chunk_text(text)
+            self.assertEqual(len(chunks), 2)
+            self.assertGreater(min(len(c['text']) for c in chunks), 400)
+            if ' ' in text:
+                self.assertEqual(' '.join(c['text'] for c in chunks), text)
 
     def test_empty_and_invalid_limits(self):
         self.assertEqual(chunk_text('  '), [])
@@ -119,7 +149,17 @@ class ScoringTests(unittest.TestCase):
         self.assertEqual(float(result['ai_probability']), result['risk_score'])
         self.assertEqual(result['sentences'], result['segments'])
         self.assertEqual(result['granularity'], 'chunk')
+        self.assertEqual(result['segments'][0]['judge_mode'], 'qwen')
+        self.assertIn(result['segments'][0]['confidence_level'], {'low', 'medium', 'high'})
         self.assertEqual(sum(result['summary']['percentages'].values()), 100)
+
+    def test_whitespace_has_no_weight_in_document_aggregation(self):
+        chunks = [{'chunk_id': 0, 'text': 'A' + ' ' * 40 + 'B', 'ai_score': 80, 'confidence': .8, 'judge_mode': 'qwen'},
+                  {'chunk_id': 1, 'text': '中', 'ai_score': 20, 'confidence': .38, 'judge_mode': 'heuristic_skip'}]
+        result = aggregate_document(chunks, 'general', {'char_count': 3})
+        self.assertEqual(result['risk_score'], 60)
+        self.assertEqual(result['segments'][1]['confidence_level'], 'low')
+        self.assertEqual(result['segments'][1]['judge_mode'], 'heuristic_skip')
 
     def test_missing_and_nonfinite_model_fields_rejected(self):
         for response in [{'label': 'human'}, {**JUDGE, 'ai_score': float('nan')}, {**JUDGE, 'confidence': float('inf')}]:
@@ -153,6 +193,14 @@ class ScoringTests(unittest.TestCase):
 
 
 class AsyncDetectionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_zero_model_weight_skips_the_provider(self):
+        features = extract_document_features(SAMPLE * 4)
+        with patch('services.judges.QWEN_SCORE_WEIGHT', 0), patch('services.judges.generate_json', new_callable=AsyncMock) as call:
+            verdict = await judge_chunk_with_qwen(SAMPLE * 4, 'general', features)
+        call.assert_not_awaited()
+        self.assertEqual(verdict['judge_skip_reason'], 'statistics_only_configured')
+        self.assertIsNone(score_chunk(features, verdict, 'general', qwen_weight=0)['score_breakdown']['qwen_confidence'])
+
     async def test_model_failure_is_explicit(self):
         with patch('services.judges.generate_json', AsyncMock(side_effect=RuntimeError('offline'))):
             q = await judge_chunk_with_qwen(SAMPLE * 4, 'general', extract_document_features(SAMPLE * 4))
@@ -209,6 +257,24 @@ class AsyncDetectionTests(unittest.IsolatedAsyncioTestCase):
 
 
 class EvaluationTests(unittest.TestCase):
+    def test_fusion_uses_raw_model_confidence_and_selects_only_on_calibration_groups(self):
+        from scripts.evaluate_fusion import compare, predict
+        features = extract_document_features(SAMPLE * 4)
+        rows = []
+        for split in ('calibration', 'test'):
+            for label, raw in [('human', 10), ('ai', 85)]:
+                measured = score_chunk(features, {**JUDGE, 'ai_score': raw}, 'general', qwen_weight=.7)
+                chunk = {**measured, 'features': features, 'judge_mode': 'qwen'}
+                rows.append({'id': split + label, 'group_id': split, 'split': split, 'label': label, 'language': 'en',
+                             'prediction': {'chunks': [chunk], 'risk_score': measured['ai_score'], 'assessment_status': 'assessed',
+                                            'analysis': {'genre': 'general'}, 'document_features': features,
+                                            'engine': {'scan_api_source': 'ollama', 'qwen_model': 'test'}}})
+        self.assertEqual(predict(rows[0], .7)['prediction']['risk_score'], rows[0]['prediction']['risk_score'])
+        self.assertEqual(predict(rows[0], 0)['prediction']['assessment_status'], 'insufficient_evidence')
+        result = compare(rows)
+        for row in rows[2:]:
+            row['label'] = 'human' if row['label'] == 'ai' else 'ai'
+        self.assertEqual(compare(rows)['selected_on_calibration'], result['selected_on_calibration'])
     def rows(self):
         return [{'id': str(i), 'group_id': str(i), 'split': 'test', 'label': label, 'prediction': {'risk_score': score, 'assessment_status': status}}
                 for i, (label, score, status) in enumerate([('human', 90, 'assessed'), ('human', 10, 'assessed'), ('ai', 90, 'assessed'), ('ai', 90, 'insufficient_evidence'), ('mixed', 50, 'assessed')])]

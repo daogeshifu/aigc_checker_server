@@ -70,13 +70,13 @@
     detection: [
       {section:'01  文本预处理与分块', rows:[
         {cells:[node('clean','清洗 → 语言 / 文体识别',['统一换行、空白；识别 zh / en / mixed','计算全文句长、重复率、词汇多样性等'])]},
-        {cells:[node('chunks','保留原文位置的句子分块',['目标 320 字符；最小目标 180','硬上限 480；长句 / 无标点文本也切分'],'normal','start/end 为清洗后文本的 Python 字符偏移。并发结果写回原顺序。')],edges:[['clean','chunks']]}
+        {cells:[node('chunks','按自然段组合检测块',['目标 900 个字符，软下限 450','上限 1,200 个字符，超长段优先在句尾切分'],'normal','start/end 为清洗后文本的 Python 字符偏移。并发结果写回原顺序。')],edges:[['clean','chunks']]}
       ]},
       {section:'02  逐块并发判断与容错', rows:[
         {cells:[node('features','逐块提取真实统计特征',['异步工作队列，完成一块即补位','默认最多 10 路，受配置与共享额度限制'],'normal','并发数 = min(块数, SCAN_CHUNK_CONCURRENCY, 提供方请求上限)，硬上限10。模型端仍可能自行排队。')],edges:[['chunks','features']]},
         {cells:[node('skip','重点 · 短块 / 列表需跳过模型？',['按语言、句子数、字数和列表占比判断'],'gate'),node('stats','统计模式',['规则跳过：heuristic_skip','模型失败：heuristic_fallback'],'fallback','统计模式只使用 feature_score；置信度上限0.38，不伪装为模型成功。')],edges:[['features','skip'],['skip','stats','是']]},
         {cells:[node('qwen','Qwen 独立判断 + 结构校验',['服务器 DETECTION_PROVIDER 选择','Ollama 或百炼；输入文本与文体'],'normal','请求 api_source 不能切换提供方；仅与实际提供方一致时，model 才可覆盖默认模型。Qwen不读取数值特征，避免重复锚定。')],edges:[['skip','qwen','否'],['qwen','stats','失败','optional','rail']]},
-        {cells:[node('blend','有效模型：70% 判断 + 30% 统计',['风格 signals 只作解释']),node('statsonly','跳过 / 失败：100% 统计',['不套用 70 / 30 模型融合'],'fallback')],edges:[['qwen','blend','有效'],['stats','statsonly','回退','','rail']]},
+        {cells:[node('blend','默认 70% 模型判断 + 30% 统计',['风格 signals 只作解释']),node('statsonly','跳过 / 失败：100% 统计',['置信度上限 0.38'],'fallback')],edges:[['qwen','blend','有效'],['stats','statsonly','回退','','rail']]},
         {cells:[node('adjust','分块规则修正 · 只执行一次',['文体修正；短文本向 50 收缩','单句、短文、模型分歧降低置信度'],'gate','学术/商业 -8，列表 -15，翻译 -6，营销 +3；短于120字符向50收缩。模型与统计差值≥35时置信度最多0.44。')],edges:[['blend','adjust'],['statsonly','adjust']]}
       ]},
       {section:'03  全文聚合与独立指标', rows:[

@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse
 
 from api.detect import router as detect_router, api_description
-from services.checker import API_SOURCE, AZURE_DEFAULT_MODEL, OLLAMA_DEFAULT_MODEL, OPENROUTER_DEFAULT_MODEL, close_azure_client
+from services.checker import API_SOURCE, AZURE_DEFAULT_MODEL, ENGINE_VERSION, OLLAMA_DEFAULT_MODEL, OPENROUTER_DEFAULT_MODEL, close_azure_client
 
 
 from services.model_client import DETECTION_PROVIDER, default_model, start_model_client, close_model_client
@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
         await close_azure_client()
 
 
-app = FastAPI(title="AIGC Checker Engine", version="2.1.0", description=api_description(), lifespan=lifespan,
+app = FastAPI(title="AIGC Checker Engine", version=ENGINE_VERSION, description=api_description(), lifespan=lifespan,
               openapi_tags=[{"name": "检测", "description": "文本风险分、原文实测指标与 Azure 条件复核。"},
                             {"name": "改写", "description": "Pro 改写、前后复检与回滚保护。"},
                             {"name": "任务日志", "description": "无需 Token 查询全部保留任务的脱敏记录与执行进度。"}])

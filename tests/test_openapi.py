@@ -29,7 +29,10 @@ class OpenApiTests(unittest.TestCase):
         self.assertIn(detect.DETECTION_PROVIDER, description)
         self.assertIn('不是 AI 来源概率', description)
         self.assertIn('Binoculars 尚未实现', description)
-        self.assertEqual(schema['info']['version'], '2.1.0')
+        self.assertEqual(schema['info']['version'], '2.3.0')
+        segment = schema['components']['schemas']['DetectionSegment']
+        self.assertEqual(set(segment['required']), {'chunk_id', 'granularity', 'text', 'ai_probability', 'level',
+                                                    'judge_mode', 'confidence_level'})
         self.assertEqual(set(schema['paths']), {'/api/scan', '/api/reduce', '/api/tasks', '/api/tasks/{task_id}'})
         self.assertIn('bailian', schema['components']['schemas']['DetectionEngine']['properties']['scan_api_source']['enum'])
         for path in ['/api/scan', '/api/reduce']:

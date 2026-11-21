@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
+
+
+CHUNK_TARGET_CHARS = 900
+CHUNK_MIN_CHARS = 450
+CHUNK_MAX_CHARS = 1200
 
 
 _SENTENCE_ENDINGS = set("。！？!?；;")
@@ -18,7 +24,8 @@ def clean_text(text: str) -> str:
     4. 去除每行首尾空白
     """
     # 统一换行符，兼容 Windows（\\r\\n）和旧 Mac（\\r）
-    text = (text or "").replace("\r\n", "\n").replace("\r", "\n").replace("\u3000", " ")
+    text = (text or "").replace("\r\n", "\n").replace("\r", "\n").replace("\u2029", "\n")
+    text = text.replace("\u2028", " ").replace("\u3000", " ")
     # 行内多余空白压缩为单个空格
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
@@ -80,9 +87,6 @@ def _split_sentences_with_spans(text: str) -> list[dict]:
                 end += 1
             append_span(end)
             index = end
-        elif ch == "\n" and index + 1 < len(text) and text[index + 1] == "\n":
-            append_span(index + 2)
-            index += 2
         else:
             index += 1
     append_span(len(text))
@@ -91,7 +95,18 @@ def _split_sentences_with_spans(text: str) -> list[dict]:
 
 def split_sentences(text: str) -> list[str]:
     """Return sentences without merging short ones, for unbiased length statistics."""
-    return [item["text"] for item in _split_sentences_with_spans(clean_text(text))]
+    return [item["text"] for paragraph in paragraphs(clean_text(text))
+            for item in _split_sentences_with_spans(paragraph.group())]
+
+
+def paragraphs(cleaned: str) -> Iterator[re.Match[str]]:
+    """Nonempty source paragraphs, with offsets into the cleaned input."""
+    return re.finditer(r"[^\n]+", cleaned)
+
+
+def judgment_text(cleaned: str) -> str:
+    """Use one separator per natural paragraph when sending text to a judge."""
+    return "\n".join(paragraph.group() for paragraph in paragraphs(cleaned))
 
 
 def detect_language(text: str) -> str:
@@ -119,51 +134,63 @@ def detect_language(text: str) -> str:
     return "zh" if zh_chars >= latin_chars else "en"
 
 
-def chunk_text(text: str, target_size: int = 320, min_size: int = 180, max_size: int = 480) -> list[dict]:
-    """Group sentence spans with a hard character limit, including unpunctuated text.
+def _paragraph_spans(text: str, start: int, end: int, target_size: int,
+                     min_size: int, max_size: int) -> Iterator[tuple[int, int]]:
+    if end - start > max_size:
+        sentence_ends = [start + s["end"] for s in _split_sentences_with_spans(text[start:end])]
+        while end - start > max_size:
+            # Reserve enough context for the tail, e.g. a 1,201-character paragraph.
+            margin = min(min_size, (end - start) // 2)
+            lower, upper = start + margin, min(start + max_size, end - margin)
+            desired = min(start + target_size, upper)
+            # Let a real sentence end land a little either side of the soft minimum.
+            edge = max(1, margin // 2)
+            candidates = (p for p in sentence_ends if start + edge <= p <= min(start + max_size, end - edge))
+            cut = min(candidates, key=lambda p: abs(p - desired), default=None)
+            if cut is None:
+                spaces = (lower + match.start() for match in re.finditer(r"\s+", text[lower:upper + 1]))
+                cut = min(spaces, key=lambda p: abs(p - desired), default=desired)
+            yield start, cut
+            start = cut
+            while start < end and text[start].isspace():
+                start += 1
+    yield start, end
 
-    Offsets refer to clean_text(text). Whitespace counts toward the context budget.
-    max_size is a character bound, not a guarantee about model token counts.
+
+def chunk_text(text: str, target_size: int = CHUNK_TARGET_CHARS, min_size: int = CHUNK_MIN_CHARS,
+               max_size: int = CHUNK_MAX_CHARS) -> list[dict]:
+    """Keep source paragraphs intact up to max_size and group short neighbors for scoring.
+
+    Offsets are Python character indices into clean_text(text), including internal whitespace.
     """
     if not 0 < min_size <= target_size <= max_size:
         raise ValueError("Require 0 < min_size <= target_size <= max_size")
     cleaned = clean_text(text)
-    spans = []
-    for sentence in _split_sentences_with_spans(cleaned):
-        start, end = sentence["start"], sentence["end"]
-        while start < end:
-            stop = min(start + max_size, end)
-            if stop < end:
-                # Prefer a word boundary, but always make progress on long tokens/CJK.
-                space = cleaned.rfind(" ", start + max_size // 2, stop)
-                if space != -1:
-                    stop = space
-            raw = cleaned[start:stop]
-            left = start + len(raw) - len(raw.lstrip())
-            right = stop - (len(raw) - len(raw.rstrip()))
-            if left < right:
-                spans.append({"start": left, "end": right})
-            start = stop
-            while start < end and cleaned[start].isspace():
-                start += 1
+    # Reserve the widest normalized paragraph separator in either layout. Adding a
+    # blank line then cannot change a model boundary or exceed the source-span cap.
+    def gap_size(left: int, right: int) -> int:
+        return 2 if "\n" in cleaned[left:right] else right - left
 
-    grouped = []
-    for span in spans:
-        if grouped:
-            current = grouped[-1]
-            projected = span["end"] - current["start"]
-            current_size = current["end"] - current["start"]
-            if projected <= max_size and (projected <= target_size or current_size < min_size):
-                current["end"] = span["end"]
-                continue
-        grouped.append(dict(span))
-    if len(grouped) > 1 and grouped[-1]["end"] - grouped[-1]["start"] < min_size:
-        if grouped[-1]["end"] - grouped[-2]["start"] <= max_size:
-            tail = grouped.pop()
-            grouped[-1]["end"] = tail["end"]
+    grouped: list[tuple[int, int, int]] = []
+    for paragraph in paragraphs(cleaned):
+        for start, end in _paragraph_spans(cleaned, *paragraph.span(), target_size, min_size, max_size):
+            length = end - start
+            if grouped:
+                group_start, previous_end, previous_size = grouped[-1]
+                size = previous_size + gap_size(previous_end, start) + length
+                if size <= target_size or (previous_size < min_size and size <= max_size):
+                    grouped[-1] = (group_start, end, size)
+                    continue
+            grouped.append((start, end, length))
+    if len(grouped) > 1:
+        start, end, tail_size = grouped[-1]
+        previous_start, previous_end, previous_size = grouped[-2]
+        joined_size = previous_size + gap_size(previous_end, start) + tail_size
+        if tail_size < min_size and joined_size <= max_size:
+            grouped[-2:] = [(previous_start, end, joined_size)]
     return [
-        {"chunk_id": index, **span, "text": cleaned[span["start"]:span["end"]]}
-        for index, span in enumerate(grouped)
+        {"chunk_id": index, "start": start, "end": end, "text": cleaned[start:end]}
+        for index, (start, end, _) in enumerate(grouped)
     ]
 
 

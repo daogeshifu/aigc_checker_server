@@ -4,7 +4,7 @@ import re
 import statistics
 from collections import Counter
 
-from services.preprocess import clean_text, detect_language, split_sentences
+from services.preprocess import clean_text, detect_language, paragraphs, split_sentences
 
 
 _PUNCTUATION_RE = re.compile(r"[，。！？；：、,.!?;:()\[\]{}\"'“”‘’《》<>/%-]")
@@ -206,15 +206,14 @@ def _extract_features(text: str, language: str | None = None) -> dict:
     sentences = split_sentences(cleaned)
     # 每句的紧凑字符数，用于计算句长统计量
     sentence_lengths = [len(re.sub(r"\s+", "", sentence)) for sentence in sentences]
-    paragraphs = [segment.strip() for segment in cleaned.split("\n\n") if segment.strip()]
-    paragraph_lengths = [len(re.sub(r"\s+", "", paragraph)) for paragraph in paragraphs]
+    lines = [paragraph.group() for paragraph in paragraphs(cleaned)]
+    paragraph_lengths = [len(re.sub(r"\s+", "", line)) for line in lines]
     tokens = _tokenize(cleaned)
     char_count = len(compact)
     token_count = len(tokens)
     connector_count = _count_connectors(cleaned, language)
     punctuation_count = len(_PUNCTUATION_RE.findall(cleaned))
     detail_signal_count = _detail_signal_count(cleaned, language)
-    lines = [line for line in cleaned.split("\n") if line.strip()]
     # 统计以列表符号开头的行比例，高比例说明内容为结构化列表
     list_line_ratio = (
         sum(1 for line in lines if re.match(r"^\s*(?:[-*•]|[\d一二三四五六七八九十]+[\.、\)])", line)) / len(lines)
@@ -232,7 +231,7 @@ def _extract_features(text: str, language: str | None = None) -> dict:
     return {
         "char_count": char_count,
         "sentence_count": len(sentences),
-        "paragraph_count": len(paragraphs),
+        "paragraph_count": len(lines),
         "language": language,
         "avg_sentence_length": round(avg_sentence_length, 4),
         "sentence_length_std": round(sentence_length_std, 4),

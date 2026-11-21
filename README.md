@@ -207,7 +207,7 @@ requirements.txt
 - 极短 chunk
 - 单句 chunk
 - 强结构化列表块
-- 细节很多的正式文本块
+- 将 `QWEN_SCORE_WEIGHT` 设为 0 后的全部文本块
 
 因此实际本地模型调用次数通常小于 chunk 数。
 
@@ -246,7 +246,7 @@ requirements.txt
 chunk 级风险分融合模型判断和统计特征：
 
 ```text
-final_chunk_score = 0.70 * qwen_score + 0.30 * feature_score
+final_chunk_score = QWEN_SCORE_WEIGHT * qwen_score + (1 - QWEN_SCORE_WEIGHT) * feature_score
 # 模型跳过/失败：只使用 feature_score；style_score 仅解释，不重复计权。
 ```
 
@@ -258,7 +258,7 @@ final_chunk_score = 0.70 * qwen_score + 0.30 * feature_score
 
 文档级 `ai_probability` 为：
 
-- 所有 chunk `ai_score` 按 chunk 长度加权平均
+- 所有 chunk `ai_score` 按实际检测的非空白字符数加权平均
 - 不再重复应用文体和短文档降分；低置信度标记证据不足
 - 最终格式化为字符串，例如 `"63.40"`
 
@@ -499,7 +499,7 @@ IS_PROD=y ./start.sh
 - 任务记录：<http://127.0.0.1:8027/tasks>
 - Swagger 文档：<http://127.0.0.1:8027/docs>
 
-`/docs` 的接口版本为 `2.1.0`，包含当前服务器提供方、套餐权限、检测/改写流程、任务轮询、响应字段及错误码。`risk_score` / `ai_probability` 表示未校准的风险分；PPL 为可选实测指标，当前不参与评分，Binoculars 尚未实现。
+`/docs` 的接口版本为 `2.3.0`，包含当前服务器提供方、套餐权限、检测/改写流程、任务轮询、响应字段及错误码。`risk_score` / `ai_probability` 表示未校准的风险分。PPL 为可选实测指标，当前不参与评分，Binoculars 尚未实现。
 
 更新接口文档代码后执行 `sudo bash manage.sh update api`，再刷新 `/docs`；仅执行 `reload api` 不会加载源码变化。
 
@@ -622,9 +622,9 @@ curl --fail http://127.0.0.1:8027/health
 ## 检测引擎 2.0 行为与迁移
 
 - 修复英文句号断句，保护常见称谓、首字母、小数、版本号与域名；句长统计保留短句。
-- 分块目标 320 字符、最小目标 180、硬上限 480；无标点长文同样拆分。`start/end` 是清洗后文本的 Python 字符偏移，非字节偏移。字符上限不等同模型 token 上限。
+- 检测以完整自然段为优先，相邻短段可合并后评分一次。每块目标 900 个字符，软下限 450 个字符，硬上限 1,200 个字符。超长自然段优先在句尾或词边界切分。`start/end` 为本次请求清洗后原文的 Python 字符偏移，区间左闭右开。
 - 普通英文单词/大写缩写不再算具体细节，重叠细节只计一次；中英文连接词分别匹配，中文重复短语按 2–4 字片段提取，不宣称语义分词。
-- Qwen 输入不再包含数值特征，风格子分只作解释。暂用 70% Qwen + 30% 统计；模型跳过或失败时只用统计。数字细节不再额外减分或触发模型跳过，文体修正仅在分块层执行一次。这些权重和文体规则尚未用标注集拟合。
+- Qwen 读取文体和块原文。默认融合权重为 70% Qwen 和 30% 统计，可通过 `QWEN_SCORE_WEIGHT` 设置。模型跳过或失败时使用文本统计，文体修正只在块级执行。
 - 低置信度返回 `label: "Insufficient Evidence"`、`assessment_status: "insufficient_evidence"`；可继续读取 `score_label` 查看原有风险区间标签。正常结果状态为 `assessed`。消费者须支持新增标签。
 - `risk_score` 为 0–100 数字；`ai_probability` 保留原字符串格式。`score_semantics: "uncalibrated_risk_score"` 和 `calibrated: false` 明确表示尚非来源概率。
 - 默认未开启原文评分时 `metrics.perplexity` 为 `null`；启用 `PROBABILITY_ENABLED` 并成功调用独立评分服务后，返回文档级真实 PPL 和 NLL，算法/模型信息见 `probability`。评分失败显式告警，不伪造数值。`metrics.binoculars` 及分块代理字段仍为 `null`。消费者不可将 null 当 0。
@@ -660,4 +660,28 @@ curl --fail http://127.0.0.1:8027/health
 
 脚本完全离线，检查重复 ID、跨分组来源泄漏和非法分数；输出误报率、召回率、覆盖率、各类拒判率、AUROC、风险分桶实际 AI 比例，以及语言/文体/长度切片。混合标签不参与二分类指标；证据不足保留在误报率和召回率的分母，防止通过大量拒判虚增指标。
 
-下一步需要真实标注数据：只在训练/校准集调整权重、阈值与概率校准，在冻结的测试集验证。可选 CPU 原文评分服务现已计算真实 token 概率、PPL 和 NLL，但尚未将其映射为来源概率。Binoculars / Fast-DetectGPT 仍未实现。
+### 2.3 分段和融合权重评测
+
+统计、分块、主判和复核使用同一套自然段边界。一个换行和空一行产生相同的判断输入。源文中的空行和高亮偏移照常返回。每条 `segments` 记录随分数提供 `confidence_level` 和 `judge_mode`。本次生效的模型权重见 `engine.qwen_score_weight`。
+
+用 Ollama 的 `qwen3.5:9b` 实测 192 篇问答。英文取 HC3 的 wiki_csai，中文取 HC3-Chinese 的 open_qa。每种语言各取 48 道题及其配对的人写和 ChatGPT 答案。每种语言前 24 道入校准集，后 24 道入测试集。同一题和重复答案不会跨集合。数据集来自 Guo 等人的 HC3 项目。[英文数据快照](https://huggingface.co/datasets/Hello-SimpleAI/HC3/tree/4d0ff18143b5a7e1b1e79beb540c04549d1e59d3) · [中文数据快照](https://huggingface.co/datasets/Hello-SimpleAI/HC3-Chinese/tree/09a687b8dc164b89e7df95abf15df3b216bc31c2) · [原始来源和许可](https://github.com/Hello-SimpleAI/chatgpt-comparison-detection#dataset-copyright)
+
+取各文件前 350 行，以 `sha256("fusion-v1:" + 语言 + ":" + 从零开始的行号)` 排序。每个来源取清洗后 50 至 1200 字符的首个合格答案。保存的编号包含语言、原始行号和来源，另附原文哈希。199 个检测块中 128 个收到了有效模型判断，71 个由短文或结构化内容规则跳过。评测只使用主判流程。
+
+固定高风险阈值 70，在校准集先筛选真人误报率不超过 5% 且能给出判断的方案，再按 AI 检出率、判断覆盖率、误报率选权重。相同结果优先沿用 0.70。0.50、0.70、0.85 三档在校准集均为 0/48 误报、1/48 检出、43/96 可判断。以下为独立测试集结果。
+
+| Qwen 权重 | 真人误报 | AI 高风险检出 | 能给出判断 |
+| --- | --- | --- | --- |
+| 0（纯统计） | 0/48 | 0/48 | 0/96 |
+| 0.50 | 0/48 | 0/48 | 44/96 |
+| 0.70（默认） | 0/48 | 0/48 | 44/96 |
+| 0.85 | 0/48 | 0/48 | 44/96 |
+| 1（Qwen 单独打分） | 1/48 | 9/48 | 58/96 |
+
+纯统计的置信度上限为 0.38，因此会返回证据不足。Qwen 单独打分仍遵循短块路由，混合模式额外检查模型与统计分歧。以上检出率和误报率都把证据不足保留在分母。默认方案在这批问答上漏检严重。实验报告、人工润色稿和其他判别模型需分别验证。
+
+下列命令使用保存的特征及模型原始分数在本地复算，也可把输入替换为同格式的标注扫描响应。
+
+```bash
+python3 -m scripts.evaluate_fusion docs/benchmarks/hc3-fusion.jsonl.gz
+```

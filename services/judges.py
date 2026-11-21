@@ -4,9 +4,10 @@ import os
 import logging
 import json
 
-from services.aggregate import _feature_score
+from services.aggregate import QWEN_SCORE_WEIGHT, _feature_score
 from services.model_client import DETECTION_PROVIDER, generate_json
 from services.prompts import QWEN_CHUNK_SYSTEM_PROMPT
+from services.preprocess import judgment_text
 from services.schemas import QwenJudgeResult
 from services.task_log import record_task_event
 
@@ -74,6 +75,8 @@ def _should_skip_qwen(features: dict, genre: str, language: str) -> tuple[bool, 
     short_chars_threshold = LOCAL_JUDGE_SKIP_SHORT_CHARS_EN if language == "en" else LOCAL_JUDGE_SKIP_SHORT_CHARS
     list_ratio_threshold = LOCAL_JUDGE_SKIP_LIST_RATIO_EN if language == "en" else LOCAL_JUDGE_SKIP_LIST_RATIO
 
+    if QWEN_SCORE_WEIGHT == 0:
+        return True, "statistics_only_configured"
     if sentence_count <= 1 and char_count <= short_chars_threshold:
         return True, "short_or_single_sentence"
     if genre == "list_or_table" or list_ratio >= list_ratio_threshold:
@@ -97,7 +100,7 @@ async def judge_chunk_with_qwen(
     若 LLM 调用失败（超时/格式异常等），自动降级为 _heuristic_fallback，不影响主流程。
     """
     # Do not anchor the judge on the same numeric heuristics later used in fusion.
-    user_prompt = json.dumps({"genre": genre, "text_to_analyze": chunk_text}, ensure_ascii=False)
+    user_prompt = json.dumps({"genre": genre, "text_to_analyze": judgment_text(chunk_text)}, ensure_ascii=False)
 
     should_skip, skip_reason = _should_skip_qwen(features, genre, features.get("language", "mixed"))
     if should_skip:

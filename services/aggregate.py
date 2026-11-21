@@ -1,6 +1,14 @@
 from __future__ import annotations
 
+import os
+import re
+
 from services.calibration import calibrate_chunk_score, calibrate_document_score
+
+
+QWEN_SCORE_WEIGHT = float(os.getenv("QWEN_SCORE_WEIGHT", "0.70"))
+if not 0 <= QWEN_SCORE_WEIGHT <= 1:
+    raise ValueError("QWEN_SCORE_WEIGHT must be between 0 and 1")
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -106,19 +114,20 @@ def _triad_percentages(score: float) -> dict:
     return rounded
 
 
-def score_chunk(features: dict, qwen_result: dict, genre: str) -> dict:
-    """Fuse 70% judge + 30% statistics, or statistics alone on fallback.
+def score_chunk(features: dict, qwen_result: dict, genre: str, *, qwen_weight: float = QWEN_SCORE_WEIGHT) -> dict:
+    """Fuse the judge and statistics, or use statistics alone on fallback.
 
-    The weights and single genre adjustment remain heuristics pending labeled data.
+    The configured weight and genre adjustments produce an uncalibrated risk score.
     Style signals are explanatory only; detail counts never establish authorship.
     """
     feature_score = _feature_score(features)
     style_score = _style_score(qwen_result)
     qwen_score = float(qwen_result.get("ai_score", 0.0))
 
-    heuristic = qwen_result.get("judge_mode", "qwen") != "qwen"
+    judge_mode = qwen_result.get("judge_mode", "qwen") if qwen_weight else "heuristic_skip"
+    heuristic = judge_mode != "qwen"
     # Style signals come from the same judge: expose for explanation, not a third vote.
-    final_score = feature_score if heuristic else 0.70 * qwen_score + 0.30 * feature_score
+    final_score = feature_score if heuristic else qwen_weight * qwen_score + (1 - qwen_weight) * feature_score
     confidence_scale = 1.0
 
     # 文体惩罚/奖励：正式文体倾向降分（保守），营销文体略微加分
@@ -142,12 +151,12 @@ def score_chunk(features: dict, qwen_result: dict, genre: str) -> dict:
 
     final_score = _clamp(calibrate_chunk_score(final_score, genre, features), 0, 100)
     disagreement = abs(qwen_score - feature_score)
-    confidence = min(float(qwen_result.get("confidence", 0.0)), 1.0) * confidence_scale
+    raw_confidence = float(qwen_result.get("confidence", 0.0))
+    confidence = min(raw_confidence, 0.38 if heuristic else 1.0) * confidence_scale
     warnings = []
     if heuristic:
-        confidence = min(confidence, 0.38)
-        warnings.append(qwen_result.get("judge_mode", "heuristic_fallback"))
-    elif disagreement >= 35:
+        warnings.append(judge_mode)
+    elif qwen_weight < 1 and disagreement >= 35:
         confidence = min(confidence, 0.44)
         warnings.append("detector_disagreement")
     if features.get("char_count", 0) < 120:
@@ -162,38 +171,40 @@ def score_chunk(features: dict, qwen_result: dict, genre: str) -> dict:
         "warnings": warnings,
         "score_breakdown": {
             "feature_score": round(feature_score, 2),
-            "qwen_score": round(qwen_score, 2),
+            "qwen_score": qwen_score,
+            "qwen_confidence": None if heuristic else raw_confidence,
             "style_score": None if heuristic else round(style_score, 2),
             "style_used_in_score": False,
         },
     }
 
 
-def aggregate_document(chunks: list[dict], genre: str, doc_features: dict) -> dict:
-    """将所有分块的评分聚合为文档级检测结果。
-
-    加权策略：按分块字符数加权平均，长分块对最终分数影响更大。
-    规则调整只在分块执行一次；文档低置信度返回证据不足。
-    """
+def document_assessment(chunks: list[dict], genre: str, doc_features: dict) -> tuple[float, str, list[str]]:
+    """Aggregate risk and evidence by scored, non-whitespace character counts."""
     if not chunks:
         raise ValueError("Cannot aggregate empty text")
     total_chars = max(doc_features.get("char_count", 0), 1)
-    # 按分块长度加权计算文档整体 AI 概率，避免短块权重过大
-    weighted_score = sum(chunk["ai_score"] * max(len(chunk.get("text", "")), 1) for chunk in chunks) / sum(
-        max(len(chunk.get("text", "")), 1) for chunk in chunks
-    )
-    total_weight = sum(max(len(chunk.get("text", "")), 1) for chunk in chunks)
-    avg_confidence = sum(chunk.get("confidence", 0.0) * max(len(chunk.get("text", "")), 1) for chunk in chunks) / total_weight
-    heuristic_weight = sum(max(len(chunk.get("text", "")), 1) for chunk in chunks if chunk.get("judge_mode") != "qwen")
+    weights = []
+    for chunk in chunks:
+        count = chunk.get("features", {}).get("char_count")
+        weights.append(count if count is not None else len(re.sub(r"\s+", "", chunk["text"])))
+    total_weight = sum(weights)
+    if not total_weight:
+        raise ValueError("Cannot aggregate empty chunks")
+    weighted_score = sum(c["ai_score"] * w for c, w in zip(chunks, weights)) / total_weight
+    avg_confidence = sum(c.get("confidence", 0.0) * w for c, w in zip(chunks, weights)) / total_weight
+    heuristic_weight = sum(w for c, w in zip(chunks, weights) if c.get("judge_mode") != "qwen")
     warnings = sorted({warning for chunk in chunks for warning in chunk.get("warnings", [])})
     if heuristic_weight:
         warnings.append("partial_heuristic" if heuristic_weight < total_weight else "statistics_only")
     if heuristic_weight / total_weight >= 0.5 or "detector_disagreement" in warnings or total_chars < 120:
         avg_confidence = min(avg_confidence, 0.44)
-    document_score = weighted_score
-    document_score = _clamp(calibrate_document_score(document_score, genre, doc_features), 0, 100)
+    return _clamp(calibrate_document_score(weighted_score, genre, doc_features), 0, 100), _confidence_label(avg_confidence), warnings
+
+
+def aggregate_document(chunks: list[dict], genre: str, doc_features: dict) -> dict:
+    document_score, confidence, warnings = document_assessment(chunks, genre, doc_features)
     label = _map_label(document_score)
-    confidence = _confidence_label(avg_confidence)
     # 高风险分块：ai_score >= 65 的分块 ID 列表，用于指导改写优先级
     high_risk_chunks = [chunk["chunk_id"] for chunk in chunks if chunk.get("ai_score", 0) >= 65]
 
@@ -208,6 +219,8 @@ def aggregate_document(chunks: list[dict], genre: str, doc_features: dict) -> di
             "granularity": "chunk",
             "text": chunk["text"],
             "ai_probability": int(round(chunk["ai_score"])),
+            "confidence_level": _confidence_label(chunk["confidence"]),
+            "judge_mode": chunk["judge_mode"],
             "level": max(1, min(10, int(round(chunk["ai_score"] / 10)))),
         }
         for chunk in chunks
